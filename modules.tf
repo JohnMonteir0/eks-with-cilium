@@ -6,10 +6,19 @@ module "network" {
 }
 
 resource "aws_eks_addon" "coredns" {
-  cluster_name  = module.eks_bottlerocket.cluster_name
-  addon_name    = "coredns"
-  addon_version = "v1.12.2-eksbuild.4" # K8s 1.33 current
-  tags          = local.tags
+  cluster_name                = module.eks_bottlerocket.cluster_name
+  addon_name                  = "coredns"
+  addon_version               = "v1.12.3-eksbuild.1" # K8s 1.33 current
+  tags                        = local.tags
+  resolve_conflicts_on_create = "OVERWRITE"
+  resolve_conflicts_on_update = "OVERWRITE"
+
+  configuration_values = jsonencode({
+    tolerations = [
+      { key = "node.kubernetes.io/not-ready",      operator = "Exists" },
+      { key = "node.cilium.io/agent-not-ready",    operator = "Exists" }
+    ]
+  })
 
   depends_on = [module.network]
 }
