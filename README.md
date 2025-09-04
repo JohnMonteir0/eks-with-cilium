@@ -5,7 +5,7 @@
 | Name | Version |
 |------|---------|
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 5.0 |
-| <a name="requirement_helm"></a> [helm](#requirement\_helm) | ~> 2.11 |
+| <a name="requirement_helm"></a> [helm](#requirement\_helm) | ~> 2.13 |
 | <a name="requirement_kubectl"></a> [kubectl](#requirement\_kubectl) | ~> 1.19 |
 | <a name="requirement_kubernetes"></a> [kubernetes](#requirement\_kubernetes) | ~> 2.37 |
 
