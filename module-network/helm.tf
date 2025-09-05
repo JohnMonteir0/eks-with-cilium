@@ -156,7 +156,7 @@ resource "helm_release" "kube_prometheus_stack" {
   name       = "kube-prometheus-stack"
   repository = "https://prometheus-community.github.io/helm-charts"
   chart      = "kube-prometheus-stack"
-  version    = "65.5.0" # example
+  version    = "65.5.0"
   namespace  = "monitoring"
   create_namespace = true
   
@@ -175,5 +175,6 @@ resource "helm_release" "kube_prometheus_stack" {
         }
       })
     ]
+  depends_on = [ helm_release.cilium ]
 }
 
