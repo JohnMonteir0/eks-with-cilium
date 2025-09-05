@@ -21,7 +21,11 @@ permissions:
 
 env:
   TF_LOG: INFO
-  TF_LOG_PATH: tf.log                      # << write TF logs to a file
+  TF_LOG_PATH: tf.log
+  # Optional but recommended for DynamoDB fallback unlock:
+  # Set this as an Actions → Variable to your backend lock table name
+  TF_DDB_TABLE: ${{ vars.TF_DDB_TABLE }}
+
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
@@ -78,11 +82,11 @@ jobs:
         id: validate
         run: terraform validate
 
-      # PLAN (wait for lock; capture output)
+      # PLAN (no lock; fast feedback; capture output)
       - name: Terraform plan
         id: plan
         if: github.event_name == 'pull_request'
-        run: terraform plan -no-color -input=false -lock-timeout=20m | tee tf-plan.out
+        run: terraform plan -no-color -input=false -lock=false -refresh=false | tee tf-plan.out
         continue-on-error: true
 
       - uses: actions/github-script@v6
@@ -116,10 +120,10 @@ jobs:
         if: github.event_name == 'pull_request' && steps.plan.outcome == 'failure'
         run: exit 1
 
-      # APPLY (also wait for lock; capture output)
+      # APPLY (wait for lock; capture output)
       - name: Terraform Apply
         if: github.event_name == 'pull_request_target' && github.event.action == 'closed' && github.event.pull_request.merged == true && github.base_ref == 'main'
-        run: terraform apply -auto-approve -input=false -lock-timeout=20m -no-color | tee tf-apply.out
+        run: terraform apply -auto-approve -input=false -no-color -lock-timeout=20m | tee tf-apply.out
 
       # ---- Diagnostics & Auto-Unlock on failure/cancel ----
 
@@ -137,11 +141,39 @@ jobs:
         if: failure() || cancelled()
         run: |
           set -euo pipefail
-          # Grab the last seen lock id from terraform log (INFO line contains tf_backend.lock.id=<uuid>)
-          LOCK_ID="$(grep -o 'tf_backend\.lock\.id=[a-f0-9-]\+' "${TF_LOG_PATH:-tf.log}" | tail -n1 | sed 's/.*=//')"
-          if [ -n "${LOCK_ID:-}" ]; then
-            echo "Attempting terraform force-unlock with LOCK_ID=${LOCK_ID}"
-            terraform force-unlock -force "$LOCK_ID" || true
-          else
-            echo "No lock id found in ${TF_LOG_PATH:-tf.log}; skipping force-unlock."
+
+          LOG="${TF_LOG_PATH:-tf.log}"
+
+          # Extract last lock id Terraform reported (if any)
+          LOCK_ID="$(grep -o 'tf_backend\.lock\.id=[a-f0-9-]\+' "$LOG" | tail -n1 | sed 's/.*=//')" || true
+          echo "Last seen lock id: ${LOCK_ID:-<none>}"
+
+          # Also try to discover the state key from logs (S3 backend path)
+          STATE_KEY="$(grep -o 'tf_backend\.s3\.path=[^ ]\+' "$LOG" | tail -n1 | sed 's/.*=//')" || true
+          if [ -z "${STATE_KEY:-}" ]; then
+            STATE_KEY="terraform.tfstate"
           fi
+          echo "Inferred state key: ${STATE_KEY}"
+
+          # Try terraform force-unlock but tolerate known benign errors
+          unlock_ok=false
+          if [ -n "${LOCK_ID:-}" ]; then
+            set +e
+            OUT="$(terraform force-unlock -force "$LOCK_ID" 2>&1)"
+            RC=$?
+            set -e
+            echo "$OUT"
+            if [ $RC -eq 0 ] || echo "$OUT" | grep -qiE 'unexpected end of JSON input|already unlocked|NoSuchLock'; then
+              echo "Treating unlock as successful."
+              unlock_ok=true
+            fi
+          fi
+
+          # Optional DynamoDB fallback if table is known and we still think it's locked
+          if [ "${unlock_ok}" != "true" ] && [ -n "${TF_DDB_TABLE:-}" ]; then
+            echo "Attempting DynamoDB cleanup: table=${TF_DDB_TABLE} key=${STATE_KEY}"
+            aws dynamodb delete-item --table-name "${TF_DDB_TABLE}" \
+              --key "{\"LockID\":{\"S\":\"${STATE_KEY}\"}}" || true
+          fi
+
+          echo "Unlock cleanup complete (best-effort)."

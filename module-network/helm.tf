@@ -149,32 +149,3 @@ resource "helm_release" "cilium" {
   }
 }
 
-
-
-### Kube Prometheus ###
-resource "helm_release" "kube_prometheus_stack" {
-  name       = "kube-prometheus-stack"
-  repository = "https://prometheus-community.github.io/helm-charts"
-  chart      = "kube-prometheus-stack"
-  version    = "65.5.0"
-  namespace  = "monitoring"
-  create_namespace = true
-  
-  # helm_release.kube_prometheus_stack
-    values = [
-      yamlencode({
-        prometheus = {
-          prometheusSpec = {
-            serviceMonitorSelector                  = {}
-            serviceMonitorNamespaceSelector         = {}
-            podMonitorSelector                      = {}
-            podMonitorNamespaceSelector             = {}
-            serviceMonitorSelectorNilUsesHelmValues = false
-            podMonitorSelectorNilUsesHelmValues     = false
-          }
-        }
-      })
-    ]
-  depends_on = [ helm_release.cilium ]
-}
-
