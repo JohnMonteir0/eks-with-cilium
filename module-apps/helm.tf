@@ -64,7 +64,7 @@ resource "helm_release" "external_dns" {
 }
 
 ### Ingress NGINX Controller ###
-resource "helm_release" "ingress_nginx" {
+resource "helm_release" "ingress-nginx" {
   name              = "ingress-nginx"
   repository        = "https://kubernetes.github.io/ingress-nginx"
   chart             = "ingress-nginx"
