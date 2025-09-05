@@ -8,7 +8,7 @@ module "eks_bottlerocket" {
   cluster_endpoint_public_access           = true
   enable_cluster_creator_admin_permissions = true
 
-  # disable all addons; we’ll add them later
+  # disable all addons we will add them later.
   bootstrap_self_managed_addons = false
 
   vpc_id     = module.vpc.vpc_id
@@ -23,32 +23,25 @@ module "eks_bottlerocket" {
       max_size     = 6
       desired_size = 3
 
-      # Avoid ASG launch "Authentication Failure" from invalid/missing keypair
-      key_name = null
-
-      # Ensure a valid IAM role + instance profile are created/attached
-      create_iam_role             = true
-      create_iam_instance_profile = true
-
-      # Needed for Bottlerocket control (SSM) and pulling from ECR
-      iam_role_additional_policies = [
-        "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
-        "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly",
-      ]
-
       bootstrap_extra_args = <<-EOT
+        # The admin host container provides SSH access and runs with "superpowers".
+        # It is disabled by default, but can be disabled explicitly.
         [settings.host-containers.admin]
         enabled = false
 
+        # The control host container provides out-of-band access via SSM.
+        # It is enabled by default, and can be disabled if you do not expect to use SSM.
+        # This could leave you with no way to access the API and change settings on an existing node!
         [settings.host-containers.control]
         enabled = true
 
+        # extra args added
         [settings.kernel]
         lockdown = "integrity"
       EOT
 
       labels = {
-        # Ensure Karpenter controller schedules off these bootstrap nodes
+        # Used to ensure Karpenter runs on nodes that it does not manage
         "karpenter.sh/controller" = "true"
       }
 
@@ -63,14 +56,17 @@ module "eks_bottlerocket" {
   }
 
   node_security_group_additional_rules = {
+    # allow all from VPC (simple + effective for tests)
     allow_all_from_vpc = {
       description = "Allow all traffic from VPC CIDR"
       type        = "ingress"
       protocol    = "-1"
       from_port   = 0
       to_port     = 0
-      cidr_blocks = [module.vpc.vpc_cidr_block]
+      cidr_blocks = [module.vpc.vpc_cidr_block] # or local.vpc_cidr
     }
+
+    # optional: be explicit for ICMP if you prefer tighter rules
     allow_icmp_from_vpc = {
       description = "Allow ICMP from VPC CIDR"
       type        = "ingress"
@@ -82,7 +78,9 @@ module "eks_bottlerocket" {
   }
 
   node_security_group_tags = merge(local.tags, {
-    # Tag the SG Karpenter should discover
+    # NOTE - if creating multiple security groups with this module, only tag the
+    # security group that Karpenter should utilize with the following tag
+    # (i.e. - at most, only one security group should have this tag in your account)
     "karpenter.sh/discovery" = local.name
   })
 
