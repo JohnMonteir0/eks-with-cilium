@@ -63,3 +63,4 @@ provider "kubectl" {
     args        = ["eks", "get-token", "--cluster-name", module.eks_bottlerocket.cluster_name]
   }
 }
+

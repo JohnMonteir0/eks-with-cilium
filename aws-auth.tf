@@ -18,4 +18,7 @@ module "aws_auth" {
       groups   = ["system:masters"]
     }
   ]
+
 }
+
+
