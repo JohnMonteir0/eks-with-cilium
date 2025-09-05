@@ -1,4 +1,4 @@
-module "eks" {
+module "aws_auth" {
   source  = "git::https://github.com/JohnMonteir0/terraform-aws-eks.git//modules/aws-auth?ref=master"
 
   manage_aws_auth_configmap = true
