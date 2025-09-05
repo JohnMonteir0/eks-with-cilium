@@ -17,32 +17,34 @@ env:
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true  
 jobs:
   terraform:
-    name: "Terraform Infrastructure Change Management"
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
-        working-directory: .
-
     steps:
-      # PLAN (PR open/sync/reopen)
       - name: Checkout (PR head)
         if: github.event.action != 'closed'
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
-      # APPLY (on merge → use the merge commit)
       - name: Checkout (merge commit)
         if: github.event.action == 'closed' && github.event.pull_request.merged == true
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+        uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.3.0
+          terraform_version: 1.7.5
+
+      # init/plan steps as you already have...
+      # Apply only on merged PRs:
+      - name: Terraform Apply
+        if: github.event.action == 'closed' && github.event.pull_request.merged == true
+        run: terraform apply -auto-approve -input=false
 
       - name: Configure AWS credentials
         env:
