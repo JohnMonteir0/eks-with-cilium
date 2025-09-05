@@ -1,5 +1,5 @@
 module "eks_bottlerocket" {
-  source = "git@github.com:JohnMonteir0/terraform-aws-eks.git"
+  source = "git::https://github.com/JohnMonteir0/terraform-aws-eks.git?ref=master"
 
   cluster_name    = local.name
   cluster_version = "1.33"
