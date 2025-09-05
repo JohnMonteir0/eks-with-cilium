@@ -1,28 +1,22 @@
 name: "Terraform Infrastructure Change Management Pipeline with GitHub Actions"
- 
+
 on:
-  push:
+  pull_request:
     branches:
       - main
+    types: [opened, synchronize, reopened, closed]
     paths:
       - "*.tf"
       - "terraform.tfvars"
       - "module-*/**"
- 
+
 env:
-  # verbosity setting for Terraform logs
   TF_LOG: INFO
-
-  # (Optional) expose GH_TOKEN to steps that need it
-  GH_TOKEN: ${{ secrets.GH_TOKEN }}
-
-  # Credentials for deployment to AWS
+  # AWS creds (replace with OIDC later if you want)
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
-  # S3 bucket for the Terraform state (you can keep or migrate to vars)
-  BUCKET_TF_STATE: ${{ secrets.BUCKET_TF_STATE }}
- 
 jobs:
   terraform:
     name: "Terraform Infrastructure Change Management"
@@ -33,27 +27,19 @@ jobs:
         working-directory: .
 
     steps:
-      - name: Checkout the repository to the runner
+      # PLAN (PR open/sync/reopen)
+      - name: Checkout (PR head)
+        if: github.event.action != 'closed'
         uses: actions/checkout@v2
 
-      # NEW: use GH_TOKEN (if provided) for any GitHub-hosted modules.
-      # Rewrites ssh://git@github.com and git@github.com: to HTTPS with token.
-      # If GH_TOKEN is empty, falls back to unauthenticated HTTPS (fine for public repos).
-      - name: Configure Git auth for Terraform modules
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: |
-          if [ -n "$GH_TOKEN" ]; then
-            git config --global url."https://${GH_TOKEN}@github.com/".insteadOf "ssh://git@github.com/"
-            git config --global url."https://${GH_TOKEN}@github.com/".insteadOf "git@github.com:"
-          else
-            git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
-            git config --global url."https://github.com/".insteadOf "git@github.com:"
-          fi
-          mkdir -p ~/.ssh
-          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null || true
+      # APPLY (on merge → use the merge commit)
+      - name: Checkout (merge commit)
+        if: github.event.action == 'closed' && github.event.pull_request.merged == true
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
 
-      - name: Setup Terraform with specified version on the runner
+      - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.3.0
@@ -63,30 +49,30 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: echo "AWS credentials configured"
-    
+
       - name: Terraform init
         id: init
         run: terraform init -reconfigure
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
- 
+
       - name: Terraform format
         id: fmt
         run: terraform fmt -recursive
-    
+
       - name: Terraform validate
         id: validate
         run: terraform validate
- 
+
       - name: Terraform plan
         id: plan
-        if: github.event_name == 'pull_request'
+        if: github.event.action != 'closed'
         run: terraform plan -no-color -input=false
         continue-on-error: true
 
       - uses: actions/github-script@v6
-        if: github.event_name == 'pull_request'
+        if: github.event.action != 'closed'
         env:
           PLAN: "terraform\n${{ steps.plan.outputs.stdout }}"
         with:
@@ -104,7 +90,7 @@ jobs:
             \`\`\`
 
             </details>
-            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event.action }}\`*`;
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
@@ -112,11 +98,12 @@ jobs:
               repo: context.repo.repo,
               body: output
             })
- 
+
       - name: Terraform Plan Status
-        if: steps.plan.outcome == 'failure'
+        if: github.event.action != 'closed' && steps.plan.outcome == 'failure'
         run: exit 1
 
+      # Apply only when PR was merged into main
       - name: Terraform Apply
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: github.event.action == 'closed' && github.event.pull_request.merged == true && github.base_ref == 'main'
         run: terraform apply -auto-approve -input=false
