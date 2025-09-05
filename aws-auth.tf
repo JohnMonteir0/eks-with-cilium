@@ -1,6 +1,5 @@
 module "eks" {
   source  = "git::https://github.com/JohnMonteir0/terraform-aws-eks.git//modules/aws-auth?ref=master"
-  version = "~> 20.0"
 
   manage_aws_auth_configmap = true
 
@@ -21,3 +20,4 @@ module "eks" {
   ]
 
 }
+
