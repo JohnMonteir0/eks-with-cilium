@@ -10,25 +10,37 @@ on:
       - "terraform.tfvars"
       - "module-*/**"
 
+# Allow commenting on PRs; keep contents read-only
+permissions:
+  contents: read
+  pull-requests: write
+
 env:
   TF_LOG: INFO
-  # AWS creds (replace with OIDC later if you want)
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true  
+  cancel-in-progress: true
+
 jobs:
   terraform:
+    name: "Terraform Infrastructure Change Management"
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: .
+
     steps:
+      # PLAN (PR open/sync/reopen)
       - name: Checkout (PR head)
         if: github.event.action != 'closed'
         uses: actions/checkout@v4
 
+      # APPLY (on merge → use the merge commit)
       - name: Checkout (merge commit)
         if: github.event.action == 'closed' && github.event.pull_request.merged == true
         uses: actions/checkout@v4
@@ -39,12 +51,6 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.7.5
-
-      # init/plan steps as you already have...
-      # Apply only on merged PRs:
-      - name: Terraform Apply
-        if: github.event.action == 'closed' && github.event.pull_request.merged == true
-        run: terraform apply -auto-approve -input=false
 
       - name: Configure AWS credentials
         env:
