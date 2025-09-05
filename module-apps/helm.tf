@@ -72,6 +72,7 @@ resource "helm_release" "ingress-nginx" {
   create_namespace = true
   namespace        = "ingress-nginx"
   replace          = true
+  atomic           = true
 
   values = [
     yamlencode({
@@ -198,28 +199,29 @@ resource "helm_release" "karpenter" {
 
 ### Kube Prometheus ###
 resource "helm_release" "kube_prometheus_stack" {
-  name       = "kube-prometheus-stack"
-  repository = "https://prometheus-community.github.io/helm-charts"
-  chart      = "kube-prometheus-stack"
-  version    = "65.5.0"
-  namespace  = "monitoring"
+  name             = "kube-prometheus-stack"
+  repository       = "https://prometheus-community.github.io/helm-charts"
+  chart            = "kube-prometheus-stack"
+  version          = "65.5.0"
+  namespace        = "monitoring"
   create_namespace = true
-  
+  atomic           = true
+
   # helm_release.kube_prometheus_stack
-    values = [
-      yamlencode({
-        prometheus = {
-          prometheusSpec = {
-            serviceMonitorSelector                  = {}
-            serviceMonitorNamespaceSelector         = {}
-            podMonitorSelector                      = {}
-            podMonitorNamespaceSelector             = {}
-            serviceMonitorSelectorNilUsesHelmValues = false
-            podMonitorSelectorNilUsesHelmValues     = false
-          }
+  values = [
+    yamlencode({
+      prometheus = {
+        prometheusSpec = {
+          serviceMonitorSelector                  = {}
+          serviceMonitorNamespaceSelector         = {}
+          podMonitorSelector                      = {}
+          podMonitorNamespaceSelector             = {}
+          serviceMonitorSelectorNilUsesHelmValues = false
+          podMonitorSelectorNilUsesHelmValues     = false
         }
-      })
-    ]
+      }
+    })
+  ]
 }
 
 

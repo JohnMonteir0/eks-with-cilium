@@ -72,80 +72,80 @@ resource "helm_release" "cilium" {
   }
 
   set {
-  name  = "hubble.metrics.enabled[0]"
-  value = "dns"
- }
- set {
-  name  = "hubble.metrics.enabled[1]"
-  value = "drop"
- }
- set {
-  name  = "hubble.metrics.enabled[2]"
-  value = "tcp"
- }
- set {
-  name  = "hubble.metrics.enabled[3]"
-  value = "flow"
- }
- set {
-  name  = "hubble.metrics.enabled[4]"
-  value = "port-distribution"
- }
- set {
-  name  = "hubble.metrics.enabled[5]"
-  value = "icmp"
- }
- set {
-  name  = "hubble.metrics.enabled[6]"
-  value = "httpV2:exemplars=true;labelsContext=source_ip\\,source_namespace\\,source_workload\\,destination_ip\\,destination_namespace\\,destination_workload\\,traffic_direction"
+    name  = "hubble.metrics.enabled[0]"
+    value = "dns"
+  }
+  set {
+    name  = "hubble.metrics.enabled[1]"
+    value = "drop"
+  }
+  set {
+    name  = "hubble.metrics.enabled[2]"
+    value = "tcp"
+  }
+  set {
+    name  = "hubble.metrics.enabled[3]"
+    value = "flow"
+  }
+  set {
+    name  = "hubble.metrics.enabled[4]"
+    value = "port-distribution"
+  }
+  set {
+    name  = "hubble.metrics.enabled[5]"
+    value = "icmp"
+  }
+  set {
+    name  = "hubble.metrics.enabled[6]"
+    value = "httpV2:exemplars=true;labelsContext=source_ip\\,source_namespace\\,source_workload\\,destination_ip\\,destination_namespace\\,destination_workload\\,traffic_direction"
   }
   set {
     name  = "hubble.metrics.serviceMonitor.enabled"
     value = "true"
   }
 
-  set { 
-    name = "hubble.ui.ingress.enabled"          
-    value = "true" 
+  set {
+    name  = "hubble.ui.ingress.enabled"
+    value = "true"
   }
-  set { 
-    name = "hubble.ui.ingress.className"        
-    value = "nginx" 
+  set {
+    name  = "hubble.ui.ingress.className"
+    value = "nginx"
   }
-  set { 
-    name = "hubble.ui.ingress.hosts[0]"         
-    value = "hubble.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net" 
+  set {
+    name  = "hubble.ui.ingress.hosts[0]"
+    value = "hubble.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
   }
-  set { 
-    name = "hubble.ui.ingress.paths[0].path"    
-    value = "/" 
+  set {
+    name  = "hubble.ui.ingress.paths[0].path"
+    value = "/"
   }
-  set { 
-    name = "hubble.ui.ingress.paths[0].pathType" 
-    value = "Prefix" 
+  set {
+    name  = "hubble.ui.ingress.paths[0].pathType"
+    value = "Prefix"
   }
-  set { 
-    name = "prometheus.enabled" 
-    value = "true" 
+  set {
+    name  = "prometheus.enabled"
+    value = "true"
   }
 
   set {
-  name  = "prometheus.serviceMonitor.enabled"
-  value = "true"
+    name  = "prometheus.serviceMonitor.enabled"
+    value = "true"
   }
-  set { 
-    name = "operator.prometheus.enabled" 
-    value = "true" 
+  set {
+    name  = "operator.prometheus.enabled"
+    value = "true"
   }
 
   set {
-  name  = "operator.prometheus.serviceMonitor.enabled"
-  value = "true"
+    name  = "operator.prometheus.serviceMonitor.enabled"
+    value = "true"
   }
 
-  set { 
-    name = "hubble.metrics.enableOpenMetrics" 
-    value = "true" 
+  set {
+    name  = "hubble.metrics.enableOpenMetrics"
+    value = "true"
   }
 }
 
