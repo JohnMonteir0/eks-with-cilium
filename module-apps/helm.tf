@@ -64,16 +64,52 @@ resource "helm_release" "external_dns" {
 }
 
 ### Ingress NGINX Controller ###
-resource "helm_release" "ingress-nginx" {
-  name             = "ingress-nginx"
-  repository       = "https://kubernetes.github.io/ingress-nginx"
-  chart            = "ingress-nginx"
-  version          = "4.12.2"
-  create_namespace = true
-  namespace        = "ingress-nginx"
-  replace          = true
-  atomic           = true
+resource "helm_release" "ingress_nginx" {
+  name              = "ingress-nginx"
+  repository        = "https://kubernetes.github.io/ingress-nginx"
+  chart             = "ingress-nginx"
+  version           = "4.12.2"
+  namespace         = "ingress-nginx"
+  create_namespace  = true
 
+  atomic            = true
+  replace           = true
+
+  # Good defaults for EKS (you can keep using your annotations list)
+  set {
+    name  = "controller.service.type"
+    value = "LoadBalancer"
+  }
+  set {
+    name  = "controller.service.externalTrafficPolicy"
+    value = "Cluster"
+  }
+
+  # Make sure webhooks don’t require cert-manager
+  set {
+    name  = "controller.admissionWebhooks.enabled"
+    value = "true"
+  }
+  set {
+    name  = "admissionWebhooks.patch.enabled"
+    value = "true"
+  }
+  set {
+    name  = "admissionWebhooks.certManager.enabled"
+    value = "false"
+  }
+
+  # Don’t require Prometheus CRDs
+  set {
+    name  = "controller.metrics.enabled"
+    value = "true"
+  }
+  set {
+    name  = "controller.metrics.serviceMonitor.enabled"
+    value = "true"
+  }
+
+  # Keep your LB annotations (e.g., NLB / scheme / target-type)
   values = [
     yamlencode({
       controller = {
