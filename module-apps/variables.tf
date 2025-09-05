@@ -28,3 +28,8 @@ variable "queue_name" {
   description = "Name of the SQS queue"
   type        = string
 }
+
+variable "public_subnet_ids_csv" {
+  type    = string
+  default = ""
+}
