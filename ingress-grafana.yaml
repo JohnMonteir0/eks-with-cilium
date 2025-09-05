@@ -29,7 +29,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: prometheus.533267208345.realhandsonlabs.net
+  - host: prometheus.533267208344.realhandsonlabs.net
     http:
       paths:
       - path: /
