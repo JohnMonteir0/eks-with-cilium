@@ -1,20 +1,18 @@
-name: "Terraform Infrastructure Change Management Pipeline with GitHub Actions"
+name: "Terraform Infrastructure Change Management"
 
 on:
-  # PLAN events with path filters
+  # PLAN with path filters
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
     types: [opened, synchronize, reopened]
     paths:
       - "*.tf"
       - "terraform.tfvars"
       - "module-*/**"
 
-  # APPLY on merge (no path filter so it always triggers when a PR is closed)
+  # APPLY on merge (no path filter → always runs on merged PR)
   pull_request_target:
-    branches:
-      - main
+    branches: [ main ]
     types: [closed]
 
 permissions:
@@ -23,12 +21,13 @@ permissions:
 
 env:
   TF_LOG: INFO
+  TF_LOG_PATH: tf.log                      # << write TF logs to a file
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
+# One run per PR; apply cancels any in-flight plan for that PR
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: tf-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -41,12 +40,12 @@ jobs:
         working-directory: .
 
     steps:
-      # PLAN (PR open/sync/reopen)
+      # PLAN (PR head)
       - name: Checkout (PR head)
         if: github.event_name == 'pull_request'
         uses: actions/checkout@v4
 
-      # APPLY (on merge → use the merge commit)
+      # APPLY (merge commit)
       - name: Checkout (merge commit)
         if: github.event_name == 'pull_request_target' && github.event.action == 'closed' && github.event.pull_request.merged == true
         uses: actions/checkout@v4
@@ -79,11 +78,11 @@ jobs:
         id: validate
         run: terraform validate
 
-      # PLAN only on pull_request events
+      # PLAN (wait for lock; capture output)
       - name: Terraform plan
         id: plan
         if: github.event_name == 'pull_request'
-        run: terraform plan -no-color -input=false
+        run: terraform plan -no-color -input=false -lock-timeout=20m | tee tf-plan.out
         continue-on-error: true
 
       - uses: actions/github-script@v6
@@ -106,7 +105,6 @@ jobs:
 
             </details>
             *Pushed by: @${{ github.actor }}, Event: \`${{ github.event_name }}\`*`;
-
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
@@ -118,7 +116,32 @@ jobs:
         if: github.event_name == 'pull_request' && steps.plan.outcome == 'failure'
         run: exit 1
 
-      # APPLY only when PR was merged into main (closed + merged)
+      # APPLY (also wait for lock; capture output)
       - name: Terraform Apply
         if: github.event_name == 'pull_request_target' && github.event.action == 'closed' && github.event.pull_request.merged == true && github.base_ref == 'main'
-        run: terraform apply -auto-approve -input=false
+        run: terraform apply -auto-approve -input=false -lock-timeout=20m -no-color | tee tf-apply.out
+
+      # ---- Diagnostics & Auto-Unlock on failure/cancel ----
+
+      - name: Upload Terraform logs
+        if: failure() || cancelled()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-logs
+          path: |
+            tf.log
+            tf-plan.out
+            tf-apply.out
+
+      - name: Force-unlock DynamoDB lock (best-effort)
+        if: failure() || cancelled()
+        run: |
+          set -euo pipefail
+          # Grab the last seen lock id from terraform log (INFO line contains tf_backend.lock.id=<uuid>)
+          LOCK_ID="$(grep -o 'tf_backend\.lock\.id=[a-f0-9-]\+' "${TF_LOG_PATH:-tf.log}" | tail -n1 | sed 's/.*=//')"
+          if [ -n "${LOCK_ID:-}" ]; then
+            echo "Attempting terraform force-unlock with LOCK_ID=${LOCK_ID}"
+            terraform force-unlock -force "$LOCK_ID" || true
+          else
+            echo "No lock id found in ${TF_LOG_PATH:-tf.log}; skipping force-unlock."
+          fi
