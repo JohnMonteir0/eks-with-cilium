@@ -1,4 +1,5 @@
 provider "aws" {
+  # use var.region if you don’t actually have local.region defined
   region = local.region
 }
 
@@ -21,7 +22,16 @@ terraform {
       version = "~> 1.19"
     }
   }
+
+  backend "s3" {
+    bucket         = "terraform-backend-statebucket-tryelg7iloga"
+    key            = "terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "terraform-backend-LockTable-1H4BO7OFFH2IN"
+    encrypt        = true
+  }
 }
+
 provider "helm" {
   kubernetes {
     host                   = module.eks_bottlerocket.cluster_endpoint
@@ -47,7 +57,6 @@ provider "kubernetes" {
 provider "kubectl" {
   host                   = module.eks_bottlerocket.cluster_endpoint
   cluster_ca_certificate = base64decode(module.eks_bottlerocket.cluster_certificate_authority_data)
-
   exec {
     api_version = "client.authentication.k8s.io/v1beta1"
     command     = "aws"
