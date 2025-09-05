@@ -1,16 +1,22 @@
 name: "Terraform Infrastructure Change Management Pipeline with GitHub Actions"
 
 on:
+  # PLAN events with path filters
   pull_request:
     branches:
       - main
-    types: [opened, synchronize, reopened, closed]
+    types: [opened, synchronize, reopened]
     paths:
       - "*.tf"
       - "terraform.tfvars"
       - "module-*/**"
 
-# Allow commenting on PRs; keep contents read-only
+  # APPLY on merge (no path filter so it always triggers when a PR is closed)
+  pull_request_target:
+    branches:
+      - main
+    types: [closed]
+
 permissions:
   contents: read
   pull-requests: write
@@ -37,12 +43,12 @@ jobs:
     steps:
       # PLAN (PR open/sync/reopen)
       - name: Checkout (PR head)
-        if: github.event.action != 'closed'
+        if: github.event_name == 'pull_request'
         uses: actions/checkout@v4
 
       # APPLY (on merge → use the merge commit)
       - name: Checkout (merge commit)
-        if: github.event.action == 'closed' && github.event.pull_request.merged == true
+        if: github.event_name == 'pull_request_target' && github.event.action == 'closed' && github.event.pull_request.merged == true
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
@@ -73,14 +79,15 @@ jobs:
         id: validate
         run: terraform validate
 
+      # PLAN only on pull_request events
       - name: Terraform plan
         id: plan
-        if: github.event.action != 'closed'
+        if: github.event_name == 'pull_request'
         run: terraform plan -no-color -input=false
         continue-on-error: true
 
       - uses: actions/github-script@v6
-        if: github.event.action != 'closed'
+        if: github.event_name == 'pull_request'
         env:
           PLAN: "terraform\n${{ steps.plan.outputs.stdout }}"
         with:
@@ -98,7 +105,7 @@ jobs:
             \`\`\`
 
             </details>
-            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event.action }}\`*`;
+            *Pushed by: @${{ github.actor }}, Event: \`${{ github.event_name }}\`*`;
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
@@ -108,10 +115,10 @@ jobs:
             })
 
       - name: Terraform Plan Status
-        if: github.event.action != 'closed' && steps.plan.outcome == 'failure'
+        if: github.event_name == 'pull_request' && steps.plan.outcome == 'failure'
         run: exit 1
 
-      # Apply only when PR was merged into main
+      # APPLY only when PR was merged into main (closed + merged)
       - name: Terraform Apply
-        if: github.event.action == 'closed' && github.event.pull_request.merged == true && github.base_ref == 'main'
+        if: github.event_name == 'pull_request_target' && github.event.action == 'closed' && github.event.pull_request.merged == true && github.base_ref == 'main'
         run: terraform apply -auto-approve -input=false
