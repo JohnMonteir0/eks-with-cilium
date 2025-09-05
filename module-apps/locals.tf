@@ -3,10 +3,10 @@ locals {
 }
 
 locals {
-  public_subnet_ids_csv = join(",", data.aws_subnets.public.ids)
-
   annotations = {
-    "service.beta.kubernetes.io/aws-load-balancer-scheme"  = "internet-facing"
-    "service.beta.kubernetes.io/aws-load-balancer-subnets" = local.public_subnet_ids_csv
+    "service.beta.kubernetes.io/aws-load-balancer-scheme"          = "internet-facing"
+    "service.beta.kubernetes.io/aws-load-balancer-type"            = "nlb"
+    "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type" = "ip"
+    # NOTE: do NOT set aws-load-balancer-subnets here
   }
 }
