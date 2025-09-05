@@ -3,12 +3,8 @@ locals {
 }
 
 locals {
-  public_subnet_ids_csv = join(",", module.vpc.public_subnets)  # or private_subnets
-  annotations = {
-    "service.beta.kubernetes.io/aws-load-balancer-scheme"          = "internet-facing"
-    "service.beta.kubernetes.io/aws-load-balancer-type"            = "nlb"
-    "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type" = "ip"
-    "service.beta.kubernetes.io/aws-load-balancer-subnets"         = local.public_subnet_ids_csv
+  public_subnet_ids_csv = join(",", data.aws_subnets.public.ids)
+  annotations = { "service.beta.kubernetes.io/aws-load-balancer-scheme" = "internet-facing"
+    "service.beta.kubernetes.io/aws-load-balancer-subnets" = local.var.public_subnet_ids_csv
   }
 }
-
