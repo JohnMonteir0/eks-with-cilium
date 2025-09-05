@@ -1,5 +1,5 @@
 module "karpenter" {
-  source = "git::ssh://git@github.com/JohnMonteir0/terraform-aws-eks.git//modules/karpenter?ref=master"
+  source = "git::https://github.com/JohnMonteir0/terraform-aws-eks.git//modules/karpenter?ref=master"
 
   cluster_name          = module.eks_bottlerocket.cluster_name
   enable_v1_permissions = true
@@ -18,7 +18,7 @@ module "karpenter" {
 }
 
 module "karpenter_disabled" {
-  source = "git::ssh://git@github.com/JohnMonteir0/terraform-aws-eks.git//modules/karpenter?ref=master"
+  source = "git::https://github.com/JohnMonteir0/terraform-aws-eks.git//modules/karpenter?ref=master"
 
   create = false
 }
