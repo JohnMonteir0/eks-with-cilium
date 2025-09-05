@@ -1,6 +1,7 @@
 module "aws_auth" {
   source  = "git::https://github.com/JohnMonteir0/terraform-aws-eks.git//modules/aws-auth?ref=master"
 
+  create_aws_auth_configmap = true
   manage_aws_auth_configmap = true
 
 #   aws_auth_roles = [
