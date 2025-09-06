@@ -27,7 +27,7 @@ terraform {
     bucket         = "terraform-backend-statebucket-zgtb2bxnsbkm"
     key            = "terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "terraform-backend-LockTable-FY5TJOKBU67"
+    dynamodb_table = "terraform-backend-LockTable-FY5TJOKBU67S"
     encrypt        = true
   }
 }
