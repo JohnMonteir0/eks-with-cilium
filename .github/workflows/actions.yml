@@ -22,21 +22,20 @@ permissions:
 env:
   TF_LOG: INFO
   TF_LOG_PATH: tf.log
-  # Optional but recommended for DynamoDB fallback unlock:
-  # Set this as an Actions → Variable to your backend lock table name
   TF_DDB_TABLE: ${{ vars.TF_DDB_TABLE }}
 
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-# One run per PR; apply cancels any in-flight plan for that PR
+# One run per PR or ref; apply cancels any in-flight plan for that PR
 concurrency:
   group: tf-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  terraform:
-    name: "Terraform Infrastructure Change Management"
+  plan:
+    if: github.event_name == 'pull_request'
+    name: "Terraform Plan"
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -44,14 +43,92 @@ jobs:
         working-directory: .
 
     steps:
-      # PLAN (PR head)
       - name: Checkout (PR head)
-        if: github.event_name == 'pull_request'
         uses: actions/checkout@v4
 
-      # APPLY (merge commit)
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5
+
+      - name: Configure AWS credentials
+        run: echo "AWS credentials configured"
+
+      - name: Terraform init
+        id: init
+        run: terraform init -reconfigure -upgrade
+
+      - name: Terraform fmt
+        id: fmt
+        run: terraform fmt -recursive
+
+      - name: Terraform validate
+        id: validate
+        run: terraform validate
+
+      # Fast plan (no lock) for PRs
+      - name: Terraform plan (no lock)
+        id: plan
+        run: terraform plan -no-color -input=false -lock=false -refresh=false | tee tf-plan.out
+        continue-on-error: true
+
+      - name: Comment plan on PR
+        if: always()
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            let plan = '';
+            try { plan = fs.readFileSync('tf-plan.out', 'utf8'); } catch (e) { plan = '(no plan output)'; }
+            const out = `#### Terraform Format and Style 🖌 \`${{ steps.fmt.outcome }}\`
+            #### Terraform Initialization ⚙️ \`${{ steps.init.outcome }}\`
+            #### Terraform Validation 🤖 \`${{ steps.validate.outcome }}\`
+            #### Terraform Plan 📖 \`${{ steps.plan.outcome }}\`
+
+            <details><summary>Show Plan</summary>
+
+            \`\`\`
+            ${plan}
+            \`\`\`
+
+            </details>
+            *Pushed by: @${{ github.actor }}, Event: \`${{ github.event_name }}\`*`;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: out
+            });
+
+      - name: Fail if plan failed
+        if: steps.plan.outcome == 'failure'
+        run: exit 1
+
+      - name: Upload Terraform logs (plan)
+        if: failure() || cancelled()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-logs-plan
+          path: |
+            tf.log
+            tf-plan.out
+
+  apply:
+    # Only on merged PR to main
+    if: github.event_name == 'pull_request_target' && github.event.action == 'closed' && github.event.pull_request.merged == true && github.base_ref == 'main'
+    name: "Terraform Apply"
+    runs-on: ubuntu-latest
+    environment:
+      name: tf-apply                        # ← set required reviewers in repo Settings → Environments
+      url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: .
+
+    steps:
       - name: Checkout (merge commit)
-        if: github.event_name == 'pull_request_target' && github.event.action == 'closed' && github.event.pull_request.merged == true
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
@@ -62,100 +139,36 @@ jobs:
           terraform_version: 1.7.5
 
       - name: Configure AWS credentials
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: echo "AWS credentials configured"
 
       - name: Terraform init
         id: init
         run: terraform init -reconfigure -upgrade
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      - name: Terraform format
-        id: fmt
-        run: terraform fmt -recursive
-
-      - name: Terraform validate
-        id: validate
-        run: terraform validate
-
-      # PLAN (no lock; fast feedback; capture output)
-      - name: Terraform plan
-        id: plan
-        if: github.event_name == 'pull_request'
-        run: terraform plan -no-color -input=false -lock=false -refresh=false | tee tf-plan.out
-        continue-on-error: true
-
-      - uses: actions/github-script@v6
-        if: github.event_name == 'pull_request'
-        env:
-          PLAN: "terraform\n${{ steps.plan.outputs.stdout }}"
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const output = `#### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
-            #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
-            #### Terraform Validation 🤖\`${{ steps.validate.outcome }}\`
-            #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
-
-            <details><summary>Show Plan</summary>
-
-            \`\`\`\n
-            ${process.env.PLAN}
-            \`\`\`
-
-            </details>
-            *Pushed by: @${{ github.actor }}, Event: \`${{ github.event_name }}\`*`;
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: output
-            })
-
-      - name: Terraform Plan Status
-        if: github.event_name == 'pull_request' && steps.plan.outcome == 'failure'
-        run: exit 1
-
-      # APPLY (wait for lock; capture output)
-      - name: Terraform Apply
-        if: github.event_name == 'pull_request_target' && github.event.action == 'closed' && github.event.pull_request.merged == true && github.base_ref == 'main'
+      - name: Terraform apply (wait for lock)
         run: terraform apply -auto-approve -input=false -no-color -lock-timeout=20m | tee tf-apply.out
 
-      # ---- Diagnostics & Auto-Unlock on failure/cancel ----
-
-      - name: Upload Terraform logs
+      # --- Diagnostics & Auto-unlock on failure/cancel ---
+      - name: Upload Terraform logs (apply)
         if: failure() || cancelled()
         uses: actions/upload-artifact@v4
         with:
-          name: terraform-logs
+          name: terraform-logs-apply
           path: |
             tf.log
-            tf-plan.out
             tf-apply.out
 
       - name: Force-unlock DynamoDB lock (best-effort)
         if: failure() || cancelled()
         run: |
           set -euo pipefail
-
           LOG="${TF_LOG_PATH:-tf.log}"
-
-          # Extract last lock id Terraform reported (if any)
           LOCK_ID="$(grep -o 'tf_backend\.lock\.id=[a-f0-9-]\+' "$LOG" | tail -n1 | sed 's/.*=//')" || true
           echo "Last seen lock id: ${LOCK_ID:-<none>}"
-
-          # Also try to discover the state key from logs (S3 backend path)
           STATE_KEY="$(grep -o 'tf_backend\.s3\.path=[^ ]\+' "$LOG" | tail -n1 | sed 's/.*=//')" || true
-          if [ -z "${STATE_KEY:-}" ]; then
-            STATE_KEY="terraform.tfstate"
-          fi
+          [ -z "${STATE_KEY:-}" ] && STATE_KEY="terraform.tfstate"
           echo "Inferred state key: ${STATE_KEY}"
 
-          # Try terraform force-unlock but tolerate known benign errors
           unlock_ok=false
           if [ -n "${LOCK_ID:-}" ]; then
             set +e
@@ -169,7 +182,6 @@ jobs:
             fi
           fi
 
-          # Optional DynamoDB fallback if table is known and we still think it's locked
           if [ "${unlock_ok}" != "true" ] && [ -n "${TF_DDB_TABLE:-}" ]; then
             echo "Attempting DynamoDB cleanup: table=${TF_DDB_TABLE} key=${STATE_KEY}"
             aws dynamodb delete-item --table-name "${TF_DDB_TABLE}" \
