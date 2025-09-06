@@ -22,7 +22,7 @@ module "eks_bottlerocket" {
       principal_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/cloud_user"
 
       policy_associations = {
-        example = {
+        admin = {
           policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy"
           access_scope = {
             type = "cluster"
