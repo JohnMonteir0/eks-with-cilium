@@ -13,5 +13,5 @@ locals {
 }
 
 locals {
-  node_role_arn = "arn:aws:iam::${data.aws_caller_identity.this.account_id}:role/${local.name}-nodes"
+  node_role_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.name}-nodes"
 }
