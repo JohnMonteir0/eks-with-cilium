@@ -14,10 +14,10 @@ module "eks_bottlerocket" {
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
 
-  eks_managed_node_groups = {
+  self_managed_node_groups = {
     karpenter = {
       ami_type      = "BOTTLEROCKET_x86_64"
-      instance_type = ["t3.medium"]
+      instance_type = "t3.medium"
 
       min_size     = 3
       max_size     = 6
@@ -53,6 +53,7 @@ module "eks_bottlerocket" {
     }
   }
 
+  depends_on = [module.aws_auth]
   node_security_group_additional_rules = {
     # allow all from VPC (simple + effective for tests)
     allow_all_from_vpc = {
