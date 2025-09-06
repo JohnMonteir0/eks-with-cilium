@@ -14,6 +14,24 @@ module "eks_bottlerocket" {
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
 
+  authentication_mode = "API_AND_CONFIG_MAP"
+
+  access_entries = {
+    # One access entry with a policy associated
+    admin = {
+      principal_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/cloud_user"
+
+      policy_associations = {
+        example = {
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy"
+          access_scope = {
+            type = "cluster"
+          }
+        }
+      }
+    }
+  }
+
   self_managed_node_groups = {
     karpenter = {
       ami_type      = "BOTTLEROCKET_x86_64"
@@ -88,3 +106,6 @@ module "eks_bottlerocket" {
   depends_on = [aws_iam_service_linked_role.autoscaling]
 }
 
+resource "aws_iam_service_linked_role" "autoscaling" {
+  aws_service_name = "autoscaling.amazonaws.com"
+}
