@@ -101,7 +101,7 @@ resource "helm_release" "cilium" {
   }
   set {
     name  = "hubble.metrics.serviceMonitor.enabled"
-    value = "true"
+    value = "false"
   }
 
   set {
