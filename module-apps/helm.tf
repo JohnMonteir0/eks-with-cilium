@@ -183,7 +183,8 @@ resource "helm_release" "karpenter" {
   repository = "oci://public.ecr.aws/karpenter"
   chart      = "karpenter"
   version    = "1.1.6"
-  wait       = false
+  atomic     = true
+  timeout    = 900
 
   set {
     name  = "settings.clusterName"
