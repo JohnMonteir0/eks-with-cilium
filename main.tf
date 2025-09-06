@@ -1,5 +1,5 @@
 module "eks_bottlerocket" {
-  source = "git::https://github.com/JohnMonteir0/terraform-aws-eks.git?ref=master"
+  source = "git::https://github.com/JohnMonteir0/terraform-eks-module.git?ref=main"
 
   cluster_name    = local.name
   cluster_version = "1.33"
@@ -9,7 +9,7 @@ module "eks_bottlerocket" {
   enable_cluster_creator_admin_permissions = true
 
   # disable all addons we will add them later.
-  bootstrap_self_managed_addons = false
+  # bootstrap_self_managed_addons = false
 
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets

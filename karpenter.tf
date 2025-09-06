@@ -1,8 +1,7 @@
 module "karpenter" {
-  source = "git::https://github.com/JohnMonteir0/terraform-aws-eks.git//modules/karpenter?ref=master"
+  source = "git::https://github.com/JohnMonteir0/terraform-eks-module.git//modules/karpenter?ref=main"
 
-  cluster_name          = module.eks_bottlerocket.cluster_name
-  enable_v1_permissions = true
+  cluster_name = module.eks_bottlerocket.cluster_name
 
   # Name needs to match role name passed to the EC2NodeClass
   node_iam_role_use_name_prefix   = false
@@ -18,7 +17,7 @@ module "karpenter" {
 }
 
 module "karpenter_disabled" {
-  source = "git::https://github.com/JohnMonteir0/terraform-aws-eks.git//modules/karpenter?ref=master"
+  source = "git::https://github.com/JohnMonteir0/terraform-eks-module.git//modules/karpenter?ref=main"
 
   create = false
 }
