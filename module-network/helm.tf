@@ -126,21 +126,21 @@ resource "helm_release" "cilium" {
   }
   set {
     name  = "prometheus.enabled"
-    value = "true"
+    value = "false"
   }
 
   set {
     name  = "prometheus.serviceMonitor.enabled"
-    value = "true"
+    value = "false"
   }
   set {
     name  = "operator.prometheus.enabled"
-    value = "true"
+    value = "false"
   }
 
   set {
     name  = "operator.prometheus.serviceMonitor.enabled"
-    value = "true"
+    value = "false"
   }
 
   set {
