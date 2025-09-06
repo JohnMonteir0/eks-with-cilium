@@ -1,7 +1,7 @@
 name: "Terraform Infrastructure Change Management"
 
 on:
-  # PLAN with path filters
+  # PR: run a fast, no-lock plan (comment on PR)
   pull_request:
     branches: [ main ]
     types: [opened, synchronize, reopened]
@@ -10,7 +10,7 @@ on:
       - "terraform.tfvars"
       - "module-*/**"
 
-  # APPLY on merge (no path filter → always runs on merged PR)
+  # After merge: plan on merge commit, then wait for approval to apply
   pull_request_target:
     branches: [ main ]
     types: [closed]
@@ -27,15 +27,16 @@ env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-# One run per PR or ref; apply cancels any in-flight plan for that PR
+# One run per PR or branch; merge run cancels any in-flight PR run
 concurrency:
-  group: tf-${{ github.event.pull_request.number || github.ref }}
+  group: tf-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  plan:
+  # ----------------------- PR PLAN (no lock) -----------------------
+  plan_pr:
     if: github.event_name == 'pull_request'
-    name: "Terraform Plan"
+    name: "Terraform Plan (PR)"
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -43,19 +44,13 @@ jobs:
         working-directory: .
 
     steps:
-      - name: Checkout (PR head)
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.7.5
 
-      - name: Configure AWS credentials
-        run: echo "AWS credentials configured"
-
       - name: Terraform init
-        id: init
         run: terraform init -reconfigure -upgrade
 
       - name: Terraform fmt
@@ -66,7 +61,7 @@ jobs:
         id: validate
         run: terraform validate
 
-      # Fast plan (no lock) for PRs
+      # Fast PR plan: no lock, no refresh -> zero contention
       - name: Terraform plan (no lock)
         id: plan
         run: terraform plan -no-color -input=false -lock=false -refresh=false | tee tf-plan.out
@@ -79,12 +74,11 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
-            let plan = '';
-            try { plan = fs.readFileSync('tf-plan.out', 'utf8'); } catch (e) { plan = '(no plan output)'; }
-            const out = `#### Terraform Format and Style 🖌 \`${{ steps.fmt.outcome }}\`
-            #### Terraform Initialization ⚙️ \`${{ steps.init.outcome }}\`
-            #### Terraform Validation 🤖 \`${{ steps.validate.outcome }}\`
-            #### Terraform Plan 📖 \`${{ steps.plan.outcome }}\`
+            let plan = '(no plan output)';
+            try { plan = fs.readFileSync('tf-plan.out', 'utf8'); } catch {}
+            const body = `#### Terraform Format 🖌 \`${{ steps.fmt.outcome }}\`
+            #### Terraform Validate 🤖 \`${{ steps.validate.outcome }}\`
+            #### Terraform Plan (PR) 📖 \`${{ steps.plan.outcome }}\`
 
             <details><summary>Show Plan</summary>
 
@@ -92,35 +86,70 @@ jobs:
             ${plan}
             \`\`\`
 
-            </details>
-            *Pushed by: @${{ github.actor }}, Event: \`${{ github.event_name }}\`*`;
+            </details>`;
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: out
+              body
             });
 
       - name: Fail if plan failed
         if: steps.plan.outcome == 'failure'
         run: exit 1
 
-      - name: Upload Terraform logs (plan)
+      - name: Upload logs (PR)
         if: failure() || cancelled()
         uses: actions/upload-artifact@v4
         with:
-          name: terraform-logs-plan
+          name: terraform-logs-pr
           path: |
             tf.log
             tf-plan.out
 
+  # -------------- MERGE: PLAN ON MERGE COMMIT (with lock) --------------
+  plan_merge:
+    if: github.event_name == 'pull_request_target' && github.event.action == 'closed' && github.event.pull_request.merged == true && github.base_ref == 'main'
+    name: "Terraform Plan (merge commit)"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: .
+
+    steps:
+      - name: Checkout (merge commit)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5
+
+      - name: Terraform init
+        run: terraform init -reconfigure -upgrade
+
+      # Accurate plan on the merge commit (locks state briefly)
+      - name: Terraform plan (out=tfplan)
+        run: terraform plan -no-color -input=false -lock-timeout=2m -out=tfplan | tee tf-plan.out
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ github.run_id }}
+          path: |
+            tfplan
+            tf-plan.out
+
+  # ---------------- MANUAL APPROVAL + APPLY ----------------
   apply:
-    # Only on merged PR to main
+    needs: plan_merge
     if: github.event_name == 'pull_request_target' && github.event.action == 'closed' && github.event.pull_request.merged == true && github.base_ref == 'main'
     name: "Terraform Apply"
     runs-on: ubuntu-latest
     environment:
-      name: tf-apply                        # ← set required reviewers in repo Settings → Environments
+      name: tf-apply   # Configure required reviewers in Settings → Environments → tf-apply
       url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     defaults:
       run:
@@ -133,29 +162,30 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.7.5
 
-      - name: Configure AWS credentials
-        run: echo "AWS credentials configured"
-
       - name: Terraform init
-        id: init
         run: terraform init -reconfigure -upgrade
 
-      - name: Terraform apply (wait for lock)
-        run: terraform apply -auto-approve -input=false -no-color -lock-timeout=20m | tee tf-apply.out
+      - name: Download plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-${{ github.run_id }}
+
+      - name: Apply saved plan (wait for lock)
+        run: terraform apply -input=false -no-color -lock-timeout=20m tfplan | tee tf-apply.out
 
       # --- Diagnostics & Auto-unlock on failure/cancel ---
-      - name: Upload Terraform logs (apply)
+      - name: Upload logs (apply)
         if: failure() || cancelled()
         uses: actions/upload-artifact@v4
         with:
           name: terraform-logs-apply
           path: |
             tf.log
+            tf-plan.out
             tf-apply.out
 
       - name: Force-unlock DynamoDB lock (best-effort)
