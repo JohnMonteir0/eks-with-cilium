@@ -92,15 +92,6 @@ module "eks_bottlerocket" {
       to_port     = -1
       cidr_blocks = [module.vpc.vpc_cidr_block]
     }
-
-    ingress_apiserver_to_albc_webhook = {
-      description                   = "Allow EKS control plane to reach ALB controller webhook"
-      type                          = "ingress"
-      protocol                      = "tcp"
-      from_port                     = 9443
-      to_port                       = 9443
-      source_cluster_security_group = true
-    }
   }
 
   node_security_group_tags = merge(local.tags, {
