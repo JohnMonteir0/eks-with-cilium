@@ -11,3 +11,7 @@ locals {
     GithubOrg  = "terraform-aws-modules"
   }
 }
+
+locals {
+  node_role_arn = "arn:aws:iam::${data.aws_caller_identity.this.account_id}:role/${local.name}-nodes"
+}
