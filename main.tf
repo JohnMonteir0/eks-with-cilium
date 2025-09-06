@@ -23,9 +23,9 @@ module "eks_bottlerocket" {
       max_size     = 6
       desired_size = 3
 
-      create_iam_role            = true
-      iam_role_name              = "${local.name}-nodes"
-      iam_role_attach_cni_policy = true
+      create_iam_instance_profile = true
+      iam_role_use_name_prefix    = false
+      iam_role_name               = "${local.name}-nodes"
       iam_role_additional_policies = {
         AmazonEKSWorkerNodePolicy          = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
         AmazonEC2ContainerRegistryReadOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
@@ -52,8 +52,6 @@ module "eks_bottlerocket" {
       }]
     }
   }
-
-  depends_on = [module.aws_auth]
   node_security_group_additional_rules = {
     # allow all from VPC (simple + effective for tests)
     allow_all_from_vpc = {
