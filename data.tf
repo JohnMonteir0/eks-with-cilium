@@ -9,5 +9,3 @@ data "aws_availability_zones" "available" {
 data "kubectl_file_documents" "karpenter" {
   content = file("${path.module}/karpenter.yaml")
 }
-
-data "aws_caller_identity" "current" {}
