@@ -30,7 +30,7 @@ module "helm" {
   cluster_endpoint        = module.eks_bottlerocket.cluster_endpoint
   queue_name              = module.karpenter.queue_name
 
-  public_subnet_ids_csv   = join(",", module.vpc.public_subnets)
+  public_subnet_ids_csv = join(",", module.vpc.public_subnets)
 
   depends_on = [aws_eks_addon.coredns]
 }

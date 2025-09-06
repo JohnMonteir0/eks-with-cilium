@@ -112,6 +112,18 @@ data "aws_iam_policy_document" "lb_controller_policy" {
     ]
     resources = ["*"]
   }
+  statement {
+  effect = "Allow"
+  actions = [
+    "iam:CreateServiceLinkedRole"
+  ]
+  resources = ["*"]
+  condition {
+    test     = "StringEquals"
+    variable = "iam:AWSServiceName"
+    values   = ["elasticloadbalancing.amazonaws.com"]
+  }
+ }
 }
 
 data "aws_iam_policy_document" "external_dns_policy" {
