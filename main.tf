@@ -26,13 +26,13 @@ module "eks_bottlerocket" {
       create_iam_instance_profile = true
       iam_role_use_name_prefix    = false
       iam_role_name               = "${local.name}-nodes"
+      iam_role_attach_cni_policy  = true
 
-      wait_for_capacity_timeout = "5m"
       iam_role_additional_policies = {
-        AmazonEKSWorkerNodePolicy          = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
-        AmazonEC2ContainerRegistryReadOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
-        AmazonSSMManagedInstanceCore       = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+        AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
       }
+
+      wait_for_capacity_timeout = "10m"
 
       bootstrap_extra_args = <<-EOT
       [settings.host-containers.admin]
@@ -84,4 +84,7 @@ module "eks_bottlerocket" {
   })
 
   tags = local.tags
+
+  depends_on = [aws_iam_service_linked_role.autoscaling]
 }
+
