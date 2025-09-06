@@ -14,10 +14,10 @@ module "eks_bottlerocket" {
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
 
-  self_managed_node_groups = {
+  eks_managed_node_groups = {
     karpenter = {
       ami_type      = "BOTTLEROCKET_x86_64"
-      instance_type = "t3.medium"
+      instance_type = ["t3.medium"]
 
       min_size     = 3
       max_size     = 6
