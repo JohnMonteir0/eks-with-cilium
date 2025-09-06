@@ -37,6 +37,15 @@ resource "helm_release" "aws_load_balancer_controller" {
     value = aws_iam_role.eks_load_balancer_controller.arn
   }
 
+  set {
+    name  = "enableServiceMutatorWebhook"
+    value = "false"
+  }
+  set {
+    name  = "podMutatorWebhookConfig.failurePolicy"
+    value = "Ignore"
+  }
+
   depends_on = [
     aws_iam_role_policy_attachment.attach_load_balancer_policy
   ]
