@@ -80,7 +80,7 @@ module "eks_bottlerocket" {
       protocol    = "-1"
       from_port   = 0
       to_port     = 0
-      cidr_blocks = [module.vpc.vpc_cidr_block] # or local.vpc_cidr
+      cidr_blocks = [module.vpc.vpc_cidr_block]
     }
 
     # optional: be explicit for ICMP if you prefer tighter rules
@@ -91,6 +91,15 @@ module "eks_bottlerocket" {
       from_port   = -1
       to_port     = -1
       cidr_blocks = [module.vpc.vpc_cidr_block]
+    }
+
+    ingress_apiserver_to_albc_webhook = {
+      description                   = "Allow EKS control plane to reach ALB controller webhook"
+      type                          = "ingress"
+      protocol                      = "tcp"
+      from_port                     = 9443
+      to_port                       = 9443
+      source_cluster_security_group = true
     }
   }
 
