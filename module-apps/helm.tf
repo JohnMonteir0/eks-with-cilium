@@ -4,6 +4,9 @@ resource "helm_release" "aws_load_balancer_controller" {
   chart      = "aws-load-balancer-controller"
   namespace  = "kube-system"
 
+  wait    = true
+  timeout = 900
+
   set {
     name  = "clusterName"
     value = var.cluster_name
@@ -134,6 +137,7 @@ resource "helm_release" "argocd" {
   chart            = "argo-cd"
   version          = "5.51.6"
   create_namespace = true
+  timeout          = 900
 
   values = [
     yamlencode({
@@ -206,6 +210,7 @@ resource "helm_release" "kube_prometheus_stack" {
   namespace        = "monitoring"
   create_namespace = true
   atomic           = true
+  timeout          = 900
 
   # helm_release.kube_prometheus_stack
   values = [
