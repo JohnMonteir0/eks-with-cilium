@@ -27,7 +27,7 @@ module "eks_bottlerocket" {
       iam_role_use_name_prefix    = false
       iam_role_name               = "${local.name}-nodes"
 
-      wait_for_capacity_timeout = "2m"
+      wait_for_capacity_timeout = "5m"
       iam_role_additional_policies = {
         AmazonEKSWorkerNodePolicy          = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
         AmazonEC2ContainerRegistryReadOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
