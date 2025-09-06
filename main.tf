@@ -23,35 +23,33 @@ module "eks_bottlerocket" {
       max_size     = 6
       desired_size = 3
 
+      create_iam_role            = true
+      iam_role_name              = "${local.name}-nodes"
+      iam_role_attach_cni_policy = true
+      iam_role_additional_policies = {
+        AmazonEKSWorkerNodePolicy          = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+        AmazonEC2ContainerRegistryReadOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+        AmazonSSMManagedInstanceCore       = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+      }
+
       bootstrap_extra_args = <<-EOT
-        # The admin host container provides SSH access and runs with "superpowers".
-        # It is disabled by default, but can be disabled explicitly.
-        [settings.host-containers.admin]
-        enabled = false
-
-        # The control host container provides out-of-band access via SSM.
-        # It is enabled by default, and can be disabled if you do not expect to use SSM.
-        # This could leave you with no way to access the API and change settings on an existing node!
-        [settings.host-containers.control]
-        enabled = true
-
-        # extra args added
-        [settings.kernel]
-        lockdown = "integrity"
-      EOT
+      [settings.host-containers.admin]
+      enabled = false
+      [settings.host-containers.control]
+      enabled = true
+      [settings.kernel]
+      lockdown = "integrity"
+    EOT
 
       labels = {
-        # Used to ensure Karpenter runs on nodes that it does not manage
         "karpenter.sh/controller" = "true"
       }
 
-      taints = [
-        {
-          key    = "node.cilium.io/agent-not-ready"
-          value  = "true"
-          effect = "NO_EXECUTE"
-        }
-      ]
+      taints = [{
+        key    = "node.cilium.io/agent-not-ready"
+        value  = "true"
+        effect = "NO_EXECUTE"
+      }]
     }
   }
 
