@@ -9,28 +9,12 @@ module "eks_bottlerocket" {
   enable_cluster_creator_admin_permissions = true
 
   # disable all addons we will add them later.
-  # bootstrap_self_managed_addons = false
+  bootstrap_self_managed_addons = false
 
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
 
   authentication_mode = "API_AND_CONFIG_MAP"
-
-  # access_entries = {
-  #   # One access entry with a policy associated
-  #   admin = {
-  #     principal_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/cloud_user"
-
-  #     policy_associations = {
-  #       admin = {
-  #         policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy"
-  #         access_scope = {
-  #           type = "cluster"
-  #         }
-  #       }
-  #     }
-  #   }
-  # }
 
   self_managed_node_groups = {
     karpenter = {
@@ -41,14 +25,6 @@ module "eks_bottlerocket" {
       max_size     = 6
       desired_size = 3
 
-      create_iam_instance_profile = true
-      iam_role_use_name_prefix    = false
-      iam_role_name               = "${local.name}-nodes"
-      iam_role_attach_cni_policy  = true
-
-      iam_role_additional_policies = {
-        AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-      }
 
       wait_for_capacity_timeout = "10m"
 
@@ -103,9 +79,4 @@ module "eks_bottlerocket" {
 
   tags = local.tags
 
-  depends_on = [aws_iam_service_linked_role.autoscaling]
-}
-
-resource "aws_iam_service_linked_role" "autoscaling" {
-  aws_service_name = "autoscaling.amazonaws.com"
 }

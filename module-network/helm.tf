@@ -6,8 +6,9 @@ resource "helm_release" "cilium" {
   chart       = "cilium"
   version     = "1.17.4"
   repository  = "https://helm.cilium.io"
-  wait        = false
+  wait        = true
   replace     = true
+  timeout     = 900
 
   # --- API server host/port for kube-proxy replacement ---
   set {
@@ -48,104 +49,133 @@ resource "helm_release" "cilium" {
   # =============================
   # Hubble (relay + UI + metrics)
   # =============================
-  set {
-    name  = "hubble.enabled"
-    value = "true"
-  }
-  set {
-    name  = "hubble.tls.auto.enabled"
-    value = "true"
-  }
-  set {
-    name  = "hubble.tls.auto.method"
-    value = "helm"
-  }
+  # set {
+  #   name  = "hubble.enabled"
+  #   value = "true"
+  # }
+  # set {
+  #   name  = "hubble.tls.auto.enabled"
+  #   value = "true"
+  # }
+  # set {
+  #   name  = "hubble.tls.auto.method"
+  #   value = "helm"
+  # }
 
-  set {
-    name  = "hubble.relay.enabled"
-    value = "true"
-  }
+  # set {
+  #   name  = "hubble.relay.enabled"
+  #   value = "true"
+  # }
 
-  set {
-    name  = "hubble.ui.enabled"
-    value = "true"
-  }
+  # set {
+  #   name  = "hubble.ui.enabled"
+  #   value = "true"
+  # }
 
-  set {
-    name  = "hubble.metrics.enabled[0]"
-    value = "dns"
-  }
-  set {
-    name  = "hubble.metrics.enabled[1]"
-    value = "drop"
-  }
-  set {
-    name  = "hubble.metrics.enabled[2]"
-    value = "tcp"
-  }
-  set {
-    name  = "hubble.metrics.enabled[3]"
-    value = "flow"
-  }
-  set {
-    name  = "hubble.metrics.enabled[4]"
-    value = "port-distribution"
-  }
-  set {
-    name  = "hubble.metrics.enabled[5]"
-    value = "icmp"
-  }
-  set {
-    name  = "hubble.metrics.enabled[6]"
-    value = "httpV2:exemplars=true;labelsContext=source_ip\\,source_namespace\\,source_workload\\,destination_ip\\,destination_namespace\\,destination_workload\\,traffic_direction"
-  }
-  set {
-    name  = "hubble.metrics.serviceMonitor.enabled"
-    value = "false"
-  }
+  # set {
+  #   name  = "hubble.metrics.enabled[0]"
+  #   value = "dns"
+  # }
+  # set {
+  #   name  = "hubble.metrics.enabled[1]"
+  #   value = "drop"
+  # }
+  # set {
+  #   name  = "hubble.metrics.enabled[2]"
+  #   value = "tcp"
+  # }
+  # set {
+  #   name  = "hubble.metrics.enabled[3]"
+  #   value = "flow"
+  # }
+  # set {
+  #   name  = "hubble.metrics.enabled[4]"
+  #   value = "port-distribution"
+  # }
+  # set {
+  #   name  = "hubble.metrics.enabled[5]"
+  #   value = "icmp"
+  # }
+  # set {
+  #   name  = "hubble.metrics.enabled[6]"
+  #   value = "httpV2:exemplars=true;labelsContext=source_ip\\,source_namespace\\,source_workload\\,destination_ip\\,destination_namespace\\,destination_workload\\,traffic_direction"
+  # }
+  # set {
+  #   name  = "hubble.metrics.serviceMonitor.enabled"
+  #   value = "true"
+  # }
 
-  set {
-    name  = "hubble.ui.ingress.enabled"
-    value = "true"
-  }
-  set {
-    name  = "hubble.ui.ingress.className"
-    value = "nginx"
-  }
-  set {
-    name  = "hubble.ui.ingress.hosts[0]"
-    value = "hubble.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
-  }
-  set {
-    name  = "hubble.ui.ingress.paths[0].path"
-    value = "/"
-  }
-  set {
-    name  = "hubble.ui.ingress.paths[0].pathType"
-    value = "Prefix"
-  }
-  set {
-    name  = "prometheus.enabled"
-    value = "false"
-  }
+  # set {
+  #   name  = "hubble.ui.ingress.enabled"
+  #   value = "true"
+  # }
+  # set {
+  #   name  = "hubble.ui.ingress.className"
+  #   value = "nginx"
+  # }
+  # set {
+  #   name  = "hubble.ui.ingress.hosts[0]"
+  #   value = "hubble.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
+  # }
+  # set {
+  #   name  = "hubble.ui.ingress.paths[0].path"
+  #   value = "/"
+  # }
+  # set {
+  #   name  = "hubble.ui.ingress.paths[0].pathType"
+  #   value = "Prefix"
+  # }
+  # set {
+  #   name  = "prometheus.enabled"
+  #   value = "true"
+  # }
 
-  set {
-    name  = "prometheus.serviceMonitor.enabled"
-    value = "false"
-  }
-  set {
-    name  = "operator.prometheus.enabled"
-    value = "false"
-  }
+  # set {
+  #   name  = "prometheus.serviceMonitor.enabled"
+  #   value = "true"
+  # }
+  # set {
+  #   name  = "operator.prometheus.enabled"
+  #   value = "true"
+  # }
 
-  set {
-    name  = "operator.prometheus.serviceMonitor.enabled"
-    value = "false"
-  }
+  # set {
+  #   name  = "operator.prometheus.serviceMonitor.enabled"
+  #   value = "true"
+  # }
 
-  set {
-    name  = "hubble.metrics.enableOpenMetrics"
-    value = "true"
-  }
+  # set {
+  #   name  = "hubble.metrics.enableOpenMetrics"
+  #   value = "true"
+  # }
 }
 
+### Kube Prometheus ###
+resource "helm_release" "kube_prometheus_stack" {
+  name             = "kube-prometheus-stack"
+  repository       = "https://prometheus-community.github.io/helm-charts"
+  chart            = "kube-prometheus-stack"
+  version          = "65.5.0"
+  namespace        = "monitoring"
+  create_namespace = true
+  atomic           = true
+  timeout          = 900
+
+  # helm_release.kube_prometheus_stack
+  values = [
+    yamlencode({
+      prometheus = {
+        prometheusSpec = {
+          serviceMonitorSelector                  = {}
+          serviceMonitorNamespaceSelector         = {}
+          podMonitorSelector                      = {}
+          podMonitorNamespaceSelector             = {}
+          serviceMonitorSelectorNilUsesHelmValues = false
+          podMonitorSelectorNilUsesHelmValues     = false
+        }
+      }
+    })
+  ]
+
+  depends_on = [helm_release.cilium]
+}

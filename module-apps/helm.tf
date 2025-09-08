@@ -1,8 +1,3 @@
-resource "time_sleep" "wait_alb_webhook" {
-  depends_on      = [helm_release.aws_load_balancer_controller]
-  create_duration = "60s"
-}
-
 resource "helm_release" "aws_load_balancer_controller" {
   name       = "aws-load-balancer-controller"
   repository = "https://aws.github.io/eks-charts"
@@ -40,15 +35,6 @@ resource "helm_release" "aws_load_balancer_controller" {
   set {
     name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
     value = aws_iam_role.eks_load_balancer_controller.arn
-  }
-
-  set {
-    name  = "enableServiceMutatorWebhook"
-    value = "false"
-  }
-  set {
-    name  = "podMutatorWebhookConfig.failurePolicy"
-    value = "Ignore"
   }
 
   depends_on = [
@@ -101,8 +87,7 @@ resource "helm_release" "ingress-nginx" {
     })
   ]
   depends_on = [
-    helm_release.aws_load_balancer_controller,
-    time_sleep.wait_alb_webhook
+    helm_release.aws_load_balancer_controller
   ]
 }
 
@@ -188,7 +173,6 @@ resource "helm_release" "argocd" {
 
   depends_on = [
     helm_release.aws_load_balancer_controller,
-    time_sleep.wait_alb_webhook,
     helm_release.ingress-nginx
   ]
 }
@@ -217,34 +201,6 @@ resource "helm_release" "karpenter" {
     name  = "settings.interruptionQueue"
     value = var.queue_name
   }
-}
-
-### Kube Prometheus ###
-resource "helm_release" "kube_prometheus_stack" {
-  name             = "kube-prometheus-stack"
-  repository       = "https://prometheus-community.github.io/helm-charts"
-  chart            = "kube-prometheus-stack"
-  version          = "65.5.0"
-  namespace        = "monitoring"
-  create_namespace = true
-  atomic           = true
-  timeout          = 900
-
-  # helm_release.kube_prometheus_stack
-  values = [
-    yamlencode({
-      prometheus = {
-        prometheusSpec = {
-          serviceMonitorSelector                  = {}
-          serviceMonitorNamespaceSelector         = {}
-          podMonitorSelector                      = {}
-          podMonitorNamespaceSelector             = {}
-          serviceMonitorSelectorNilUsesHelmValues = false
-          podMonitorSelectorNilUsesHelmValues     = false
-        }
-      }
-    })
-  ]
 }
 
 

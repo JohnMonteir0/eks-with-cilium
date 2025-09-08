@@ -8,7 +8,7 @@ module "network" {
 resource "aws_eks_addon" "coredns" {
   cluster_name                = module.eks_bottlerocket.cluster_name
   addon_name                  = "coredns"
-  addon_version               = "v1.12.3-eksbuild.1" # K8s 1.33 current
+  addon_version               = "v1.12.3-eksbuild.1"
   tags                        = local.tags
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "OVERWRITE"
