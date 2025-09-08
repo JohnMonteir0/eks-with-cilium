@@ -26,7 +26,7 @@ module "eks_bottlerocket" {
       desired_size = 3
 
 
-      wait_for_capacity_timeout = "10m"
+      ignore_failed_scaling_activities = true
 
       bootstrap_extra_args = <<-EOT
       [settings.host-containers.admin]
