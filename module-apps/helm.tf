@@ -1,6 +1,6 @@
 resource "time_sleep" "wait_alb_webhook" {
   depends_on      = [helm_release.aws_load_balancer_controller]
-  create_duration = "120s"
+  create_duration = "60s"
 }
 
 resource "helm_release" "aws_load_balancer_controller" {
@@ -8,9 +8,9 @@ resource "helm_release" "aws_load_balancer_controller" {
   repository = "https://aws.github.io/eks-charts"
   chart      = "aws-load-balancer-controller"
   namespace  = "kube-system"
-
-  wait    = true
-  timeout = 900
+  wait       = true
+  timeout    = 900
+  atomic     = true
 
   set {
     name  = "clusterName"
