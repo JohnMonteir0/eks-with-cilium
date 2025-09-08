@@ -1,3 +1,8 @@
+resource "time_sleep" "wait_alb_webhook" {
+  depends_on      = [helm_release.aws_load_balancer_controller]
+  create_duration = "120s"
+}
+
 resource "helm_release" "aws_load_balancer_controller" {
   name       = "aws-load-balancer-controller"
   repository = "https://aws.github.io/eks-charts"
@@ -96,7 +101,8 @@ resource "helm_release" "ingress-nginx" {
     })
   ]
   depends_on = [
-    helm_release.aws_load_balancer_controller
+    helm_release.aws_load_balancer_controller,
+    time_sleep.wait_alb_webhook
   ]
 }
 
@@ -181,6 +187,7 @@ resource "helm_release" "argocd" {
 
   depends_on = [
     helm_release.aws_load_balancer_controller,
+    time_sleep.wait_alb_webhook,
     helm_release.ingress-nginx
   ]
 }
