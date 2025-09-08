@@ -36,7 +36,7 @@ module "helm" {
 }
 
 resource "kubectl_manifest" "karpenter" {
-  for_each  = data.kubectl_file_documents.karpenter.documents
+  for_each  = data.kubectl_file_documents.karpenter.manifests
   yaml_body = each.value
 
   depends_on = [module.helm]

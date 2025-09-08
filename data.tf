@@ -7,5 +7,5 @@ data "aws_availability_zones" "available" {
 }
 
 data "kubectl_file_documents" "karpenter" {
-  content = file("${path.module}/karpenter.yaml")
+  content = file("${path.root}/karpenter.yaml")
 }
