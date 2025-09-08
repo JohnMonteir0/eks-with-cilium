@@ -1,41 +1,41 @@
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: kube-prometheus-stack-grafana
-  namespace: monitoring
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-spec:
-  ingressClassName: nginx
-  rules:
-  - host: grafana.533267208345.realhandsonlabs.net
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service: 
-            name: kube-prometheus-stack-grafana
-            port:
-              name: http-web
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: kube-prometheus-stack-prometheus
-  namespace: monitoring
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-spec:
-  ingressClassName: nginx
-  rules:
-  - host: prometheus.533267208344.realhandsonlabs.net
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service: 
-            name: kube-prometheus-stack-prometheus
-            port:
-              name: http-web
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: kube-prometheus-stack-grafana
+#   namespace: monitoring
+#   annotations:
+#     nginx.ingress.kubernetes.io/rewrite-target: /
+# spec:
+#   ingressClassName: nginx
+#   rules:
+#   - host: grafana.533267208345.realhandsonlabs.net
+#     http:
+#       paths:
+#       - path: /
+#         pathType: Prefix
+#         backend:
+#           service: 
+#             name: kube-prometheus-stack-grafana
+#             port:
+#               name: http-web
+# ---
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: kube-prometheus-stack-prometheus
+#   namespace: monitoring
+#   annotations:
+#     nginx.ingress.kubernetes.io/rewrite-target: /
+# spec:
+#   ingressClassName: nginx
+#   rules:
+#   - host: prometheus.533267208344.realhandsonlabs.net
+#     http:
+#       paths:
+#       - path: /
+#         pathType: Prefix
+#         backend:
+#           service: 
+#             name: kube-prometheus-stack-prometheus
+#             port:
+#               name: http-web
