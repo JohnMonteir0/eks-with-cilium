@@ -49,28 +49,48 @@ resource "helm_release" "cilium" {
   # =============================
   # Hubble (relay + UI + metrics)
   # =============================
-  # set {
-  #   name  = "hubble.enabled"
-  #   value = "true"
-  # }
-  # set {
-  #   name  = "hubble.tls.auto.enabled"
-  #   value = "true"
-  # }
-  # set {
-  #   name  = "hubble.tls.auto.method"
-  #   value = "helm"
-  # }
+  set {
+    name  = "hubble.enabled"
+    value = "true"
+  }
+  set {
+    name  = "hubble.tls.auto.enabled"
+    value = "true"
+  }
+  set {
+    name  = "hubble.tls.auto.method"
+    value = "helm"
+  }
 
-  # set {
-  #   name  = "hubble.relay.enabled"
-  #   value = "true"
-  # }
+  set {
+    name  = "hubble.relay.enabled"
+    value = "true"
+  }
 
-  # set {
-  #   name  = "hubble.ui.enabled"
-  #   value = "true"
-  # }
+  set {
+    name  = "hubble.ui.enabled"
+    value = "true"
+  }
+  set {
+    name  = "hubble.ui.ingress.enabled"
+    value = "true"
+  }
+  set {
+    name  = "hubble.ui.ingress.className"
+    value = "nginx"
+  }
+  set {
+    name  = "hubble.ui.ingress.hosts[0]"
+    value = "hubble.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
+  }
+  set {
+    name  = "hubble.ui.ingress.paths[0].path"
+    value = "/"
+  }
+  set {
+    name  = "hubble.ui.ingress.paths[0].pathType"
+    value = "Prefix"
+  }
 
   # set {
   #   name  = "hubble.metrics.enabled[0]"
@@ -105,26 +125,6 @@ resource "helm_release" "cilium" {
   #   value = "true"
   # }
 
-  # set {
-  #   name  = "hubble.ui.ingress.enabled"
-  #   value = "true"
-  # }
-  # set {
-  #   name  = "hubble.ui.ingress.className"
-  #   value = "nginx"
-  # }
-  # set {
-  #   name  = "hubble.ui.ingress.hosts[0]"
-  #   value = "hubble.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
-  # }
-  # set {
-  #   name  = "hubble.ui.ingress.paths[0].path"
-  #   value = "/"
-  # }
-  # set {
-  #   name  = "hubble.ui.ingress.paths[0].pathType"
-  #   value = "Prefix"
-  # }
   # set {
   #   name  = "prometheus.enabled"
   #   value = "true"
