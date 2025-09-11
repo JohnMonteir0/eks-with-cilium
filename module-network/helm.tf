@@ -4,7 +4,7 @@ resource "helm_release" "cilium" {
   description = "A Helm chart to deploy cilium"
   namespace   = "kube-system"
   chart       = "cilium"
-  version     = "1.17.4"
+  version     = "1.18.1"
   repository  = "https://helm.cilium.io"
   wait        = true
   replace     = true
@@ -43,6 +43,18 @@ resource "helm_release" "cilium" {
   }
   set {
     name  = "kubeProxyReplacement"
+    value = "true"
+  }
+
+  # --- Filter: only use your pod subnets (100.64.0.0/16) ---
+  set {
+    name  = "eni.subnetTagsFilter[0]"
+    value = "cilium-pod-subnet=true"
+  }
+
+  # Optional: higher pod density
+  set {
+    name  = "eni.awsEnablePrefixDelegation"
     value = "true"
   }
 
