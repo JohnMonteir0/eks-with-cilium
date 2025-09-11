@@ -68,6 +68,15 @@ module "eks_bottlerocket" {
       to_port     = -1
       cidr_blocks = [module.vpc.vpc_cidr_block]
     }
+
+    allow_all_from_vpc = {
+      description = "Allow all traffic from pod CIDR"
+      type        = "ingress"
+      protocol    = "-1"
+      from_port   = 0
+      to_port     = 0
+      cidr_blocks = [local.pod_cidr]
+    }
   }
 
   node_security_group_tags = merge(local.tags, {
