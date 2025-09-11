@@ -5,14 +5,14 @@ on:
     branches: [ main ]   # run after a PR is merged
 
 permissions:
+  id-token: write
   contents: read
   issues: write          # needed so the approval action can open/comment issues
 
 env:
   TF_LOG: INFO
   TF_LOG_PATH: tf.log
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_REGION: ${{ vars.AWS_REGION }}
   APPROVERS: JohnMonteir0
   MIN_APPROVALS: 1
 
@@ -32,6 +32,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      # <<< OIDC auth: assume the role via GitHub OIDC >>>
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-tf-plan-${{ github.run_id }}
 
       - uses: hashicorp/setup-terraform@v3
         with:
