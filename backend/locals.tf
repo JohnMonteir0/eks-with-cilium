@@ -12,7 +12,4 @@ locals {
   }
 }
 
-locals {
-  pod_cidr     = "100.64.0.0/16"
-  az_index_map = { for idx, az in local.azs : az => idx }
-}
+data "aws_caller_identity" "current" {}

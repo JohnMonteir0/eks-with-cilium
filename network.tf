@@ -31,3 +31,42 @@ module "vpc" {
 
   tags = local.tags
 }
+
+################################################################################
+# Secondary VPC CIDR for Pods
+################################################################################
+resource "aws_vpc_ipv4_cidr_block_association" "pods" {
+  vpc_id     = module.vpc.vpc_id
+  cidr_block = local.pod_cidr
+}
+
+################################################################################
+# Pod subnets (1 per AZ)
+################################################################################
+resource "aws_subnet" "pods" {
+  for_each = local.az_index_map
+
+  vpc_id                  = module.vpc.vpc_id
+  availability_zone       = each.key
+  cidr_block              = cidrsubnet(local.pod_cidr, 3, each.value)
+  map_public_ip_on_launch = false
+
+  # Ensure the secondary CIDR is attached first
+  depends_on = [aws_vpc_ipv4_cidr_block_association.pods]
+
+  tags = {
+    Name                                        = "cilium-pod-${each.key}"
+    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
+    "cilium-pod-subnet"                         = "true"
+  }
+}
+
+################################################################################
+# Attach pod subnets to the *matching* private route tables
+################################################################################
+resource "aws_route_table_association" "pods" {
+  for_each = local.az_index_map
+
+  subnet_id      = aws_subnet.pods[each.key].id
+  route_table_id = module.vpc.private_route_table_ids[0]
+}
