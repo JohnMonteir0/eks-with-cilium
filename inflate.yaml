@@ -20,3 +20,13 @@ spec:
             requests:
               cpu: 1
               memory: 3Gi
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: inflate
+                    operator: In
+                    values:
+                      - inflate
+              topologyKey: topology.kubernetes.io/zone
