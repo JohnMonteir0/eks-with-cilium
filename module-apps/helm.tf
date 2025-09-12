@@ -130,9 +130,8 @@ resource "helm_release" "ebs_csi_driver" {
     value = "ebs-csi"
   }
   set {
-    # escape dots in the annotation key as \.
     name  = "storageClasses[0].annotations.storageclass\\.kubernetes\\.io/is-default-class"
-    value = "true"
+    value = "\"true\"" # note the extra quotes inside
   }
   set {
     name  = "storageClasses[0].volumeBindingMode"
@@ -144,7 +143,7 @@ resource "helm_release" "ebs_csi_driver" {
   }
   set {
     name  = "storageClasses[0].parameters.encrypted"
-    value = "true"
+    value = "\"true\""
   }
   set {
     name  = "storageClasses[0].parameters.type"
