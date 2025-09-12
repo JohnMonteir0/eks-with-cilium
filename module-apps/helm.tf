@@ -124,6 +124,33 @@ resource "helm_release" "ebs_csi_driver" {
     value = "true"
   }
 
+  # storageClasses[0]
+  set {
+    name  = "storageClasses[0].name"
+    value = "ebs-csi"
+  }
+  set {
+    # escape dots in the annotation key as \.
+    name  = "storageClasses[0].annotations.storageclass\\.kubernetes\\.io/is-default-class"
+    value = "true"
+  }
+  set {
+    name  = "storageClasses[0].volumeBindingMode"
+    value = "WaitForFirstConsumer"
+  }
+  set {
+    name  = "storageClasses[0].reclaimPolicy"
+    value = "Delete"
+  }
+  set {
+    name  = "storageClasses[0].parameters.encrypted"
+    value = "true"
+  }
+  set {
+    name  = "storageClasses[0].parameters.type"
+    value = "gp3"
+  }
+
   depends_on = [
     aws_iam_role_policy_attachment.attach_ebs_csi_policy
   ]
