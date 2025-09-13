@@ -15,7 +15,7 @@ terraform {
     }
     aws = {
       source  = "hashicorp/aws"
-      version = ">= 5.0"
+      version = ">= 5.95"
     }
     kubectl = {
       source  = "gavinbunney/kubectl"
@@ -24,10 +24,10 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "terraform-backend-statebucket-kjxwc9kf8vox"
+    bucket         = "terraform-backend-statebucket-wfpicir6htn8"
     key            = "terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "terraform-backend-LockTable-1S19SQJDOEEVB"
+    dynamodb_table = "terraform-backend-LockTable-1PVN59UZZN0VR"
     encrypt        = true
   }
 }
