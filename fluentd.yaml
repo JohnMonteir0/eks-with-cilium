@@ -1,0 +1,196 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluentd-config
+  namespace: kube-system
+data:
+  fluent.conf: |
+    # Tail containerd logs (Bottlerocket/containerd)
+    <source>
+      @type tail
+      @id in_tail_containers
+      path /var/log/containers/*.log
+      pos_file /var/log/fluentd-containers.log.pos
+      tag kubernetes.*
+      read_from_head true
+      <parse>
+        @type cri
+        time_format %Y-%m-%dT%H:%M:%S.%N%:z
+      </parse>
+    </source>
+
+    # Enrich with Kubernetes metadata
+    <filter kubernetes.**>
+      @type kubernetes_metadata
+    </filter>
+
+    # Ship to OpenSearch
+    <match **>
+      @type opensearch
+      host "#{ENV['FLUENT_OPENSEARCH_HOST']}"
+      port "#{ENV['FLUENT_OPENSEARCH_PORT']}"
+      scheme "#{ENV['FLUENT_OPENSEARCH_SCHEME']}"
+      ssl_verify "#{ENV['FLUENT_OPENSEARCH_SSL_VERIFY']}"
+      user "#{ENV['FLUENT_OPENSEARCH_USER']}"
+      password "#{ENV['FLUENT_OPENSEARCH_PASSWORD']}"
+
+      suppress_type_name true
+      log_es_400_reason true
+
+      logstash_format true
+      logstash_prefix "#{ENV['FLUENT_OPENSEARCH_LOGSTASH_PREFIX'] || 'k8s-logs'}"
+      logstash_dateformat "#{ENV['FLUENT_OPENSEARCH_LOGSTASH_DATEFORMAT'] || '%Y.%m.%d'}"
+      include_tag_key true
+
+      # >>> THIS LINE FIXES THE 'priority' ERROR <<<
+      use_legacy_template false
+
+      template_name fluentd-k8s
+      template_file /fluentd/etc/index-template.json
+      template_overwrite true
+
+      <buffer>
+        @type file
+        path /var/log/fluentd-buffer
+        flush_interval 5s
+        chunk_limit_size 8M
+        total_limit_size 512M
+        retry_max_interval 30
+        retry_timeout 72h
+      </buffer>
+    </match>
+
+  index-template.json: |
+    {
+      "index_patterns": ["k8s-logs-*"],
+      "template": {
+        "settings": {
+          "index.mapping.ignore_malformed": true
+        },
+        "mappings": {
+          "dynamic": true,
+          "properties": {
+            "@timestamp": { "type": "date" },
+            "log":        { "type": "text" },
+            "message":    { "type": "text" },
+            "kubernetes": { "enabled": false }
+          }
+        }
+      },
+      "priority": 500
+    }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fluentd
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: fluentd
+rules:
+- apiGroups: [""]
+  resources: ["pods", "namespaces"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: fluentd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: fluentd
+subjects:
+- kind: ServiceAccount
+  name: fluentd
+  namespace: kube-system
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluentd
+  namespace: kube-system
+  labels:
+    k8s-app: fluentd-logging
+    version: v1
+spec:
+  selector:
+    matchLabels:
+      k8s-app: fluentd-logging
+      version: v1
+  template:
+    metadata:
+      labels:
+        k8s-app: fluentd-logging
+        version: v1
+    spec:
+      serviceAccountName: fluentd
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          effect: NoSchedule
+      containers:
+        - name: fluentd
+          image: fluent/fluentd-kubernetes-daemonset:v1-debian-opensearch
+          securityContext:
+            runAsUser: 0
+          env:
+            - name: FLUENT_OPENSEARCH_HOST
+              value: "search-cilium-tn3jh6ktrab2odwuk2532m76ci.us-east-1.es.amazonaws.com"
+            - name: FLUENT_OPENSEARCH_PORT
+              value: "443"
+            - name: FLUENT_OPENSEARCH_SCHEME
+              value: "https"
+            - name: FLUENT_OPENSEARCH_SSL_VERIFY
+              value: "true"
+            - name: FLUENT_OPENSEARCH_USER
+              value: "admin"
+            - name: FLUENT_OPENSEARCH_PASSWORD
+              value: "Barbarbarbar1!"
+            - name: FLUENT_OPENSEARCH_LOGSTASH_PREFIX
+              value: "k8s-logs"
+            - name: FLUENT_OPENSEARCH_LOGSTASH_DATEFORMAT
+              value: "%Y.%m.%d"
+          resources:
+            limits:
+              memory: 200Mi
+            requests:
+              cpu: 100m
+              memory: 200Mi
+          volumeMounts:
+            - name: config-volume
+              mountPath: /fluentd/etc/fluent.conf
+              subPath: fluent.conf
+            - name: template-volume
+              mountPath: /fluentd/etc/index-template.json
+              subPath: index-template.json
+            - name: varlog
+              mountPath: /var/log
+            - name: podslog
+              mountPath: /var/log/pods
+              readOnly: true
+            - name: containerslog
+              mountPath: /var/log/containers
+              readOnly: true
+            - name: buffer
+              mountPath: /var/log/fluentd-buffer
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - name: config-volume
+          configMap:
+            name: fluentd-config
+        - name: template-volume
+          configMap:
+            name: fluentd-config
+        - name: varlog
+          hostPath: { path: /var/log }
+        - name: podslog
+          hostPath: { path: /var/log/pods }
+        - name: containerslog
+          hostPath: { path: /var/log/containers }
+        - name: buffer
+          emptyDir: {}
