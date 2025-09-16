@@ -155,6 +155,57 @@ resource "helm_release" "ebs_csi_driver" {
   ]
 }
 
+resource "helm_release" "cert_manager" {
+  name             = "cert-manager"
+  namespace        = "cert-manager"
+  repository       = "https://charts.jetstack.io"
+  chart            = "cert-manager"
+  version          = "v1.18.2"
+  create_namespace = true
+
+  set {
+    name  = "installCRDs"
+    value = "true"
+  }
+
+  # set {
+  #   name  = "prometheus.enabled"
+  #   value = "true"
+  # }
+
+  set {
+    name  = "webhook.timeoutSeconds"
+    value = "30"
+  }
+
+  set {
+    name  = "replicaCount"
+    value = "2"
+  }
+}
+
+resource "kubectl_manifest" "karpenter_node_pool_apps" {
+  yaml_body = <<-YAML
+    apiVersion: cert-manager.io/v1
+    kind: ClusterIssuer
+    metadata:
+      name: letsencrypt-staging
+      namespace: cert-manager
+    spec:
+      acme:
+        server: https://acme-staging-v02.api.letsencrypt.org/directory
+        email: johnmonteiro78@yahoo.com
+        privateKeySecretRef:
+          name: letsencrypt-staging
+        solvers:
+          - http01:
+              ingress:
+                ingressClassName: nginx
+  YAML
+
+  depends_on = [helm_release.cert_manager]
+}
+
 ### Argocd ###
 resource "helm_release" "argocd" {
   name             = "argocd"
@@ -186,10 +237,12 @@ resource "helm_release" "argocd" {
             "nginx.ingress.kubernetes.io/force-ssl-redirect" = "true"
             "nginx.ingress.kubernetes.io/backend-protocol"   = "HTTP"
             "external-dns.alpha.kubernetes.io/hostname"      = "argocd.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
+            "cert-manager.io/cluster-issuer"                 = "letsencrypt-staging"
           }
-          extraTls = [
+          tls = [
             {
-              hosts = ["argocd.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"]
+              hosts      = ["argocd.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"]
+              secretName = "letsencrypt-staging"
             }
           ]
         }
@@ -199,9 +252,11 @@ resource "helm_release" "argocd" {
 
   depends_on = [
     helm_release.aws_load_balancer_controller,
-    helm_release.ingress-nginx
+    helm_release.ingress-nginx,
+    helm_release.cert_manager
   ]
 }
+
 
 ### Karpenter ###
 resource "helm_release" "karpenter" {
