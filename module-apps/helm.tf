@@ -184,28 +184,6 @@ resource "helm_release" "cert_manager" {
   }
 }
 
-resource "kubectl_manifest" "karpenter_node_pool_apps" {
-  yaml_body = <<-YAML
-    apiVersion: cert-manager.io/v1
-    kind: ClusterIssuer
-    metadata:
-      name: letsencrypt-staging
-      namespace: cert-manager
-    spec:
-      acme:
-        server: https://acme-staging-v02.api.letsencrypt.org/directory
-        email: johnmonteiro78@yahoo.com
-        privateKeySecretRef:
-          name: letsencrypt-staging
-        solvers:
-          - http01:
-              ingress:
-                ingressClassName: nginx
-  YAML
-
-  depends_on = [helm_release.cert_manager]
-}
-
 ### Argocd ###
 resource "helm_release" "argocd" {
   name             = "argocd"
