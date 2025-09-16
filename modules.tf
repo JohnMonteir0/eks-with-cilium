@@ -43,7 +43,7 @@ resource "kubectl_manifest" "karpenter" {
 }
 
 resource "kubectl_manifest" "letsencrypt" {
-  for_each  = data.kubectl_file_documents.karpenter.manifests
+  for_each  = data.kubectl_file_documents.letsencrypt.manifests
   yaml_body = each.value
 
   depends_on = [module.helm]
