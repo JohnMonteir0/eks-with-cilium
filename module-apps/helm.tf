@@ -213,7 +213,7 @@ resource "helm_release" "argocd" {
           ingressClassName = "nginx"
           annotations = {
             "nginx.ingress.kubernetes.io/force-ssl-redirect" = "true"
-            "nginx.ingress.kubernetes.io/backend-protocol"   = "HTTP"
+            "nginx.ingress.kubernetes.io/backend-protocol"   = "HTTPS"
             "external-dns.alpha.kubernetes.io/hostname"      = "argocd.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
             "cert-manager.io/cluster-issuer"                 = "letsencrypt-staging"
           }
