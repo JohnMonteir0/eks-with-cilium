@@ -87,7 +87,7 @@
 
 #   # VPC endpoint
 #   vpc_endpoints = {}
-  
+
 #   # Security Group rule
 #   security_group_rules = {
 #     ingress_443 = {
@@ -120,7 +120,7 @@
 #     }
 #   ]
 #   depends_on = [aws_iam_service_linked_role.opensearch]
-  
+
 #   tags = {
 #     Terraform   = "true"
 #     Environment = "dev"
