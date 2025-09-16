@@ -10,4 +10,8 @@ data "kubectl_file_documents" "karpenter" {
   content = file("${path.root}/karpenter.yaml")
 }
 
+data "kubectl_file_documents" "letsencrypt" {
+  content = file("${path.root}/letsencrypt.yaml")
+}
+
 data "aws_caller_identity" "current" {}

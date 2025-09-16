@@ -42,6 +42,13 @@ resource "kubectl_manifest" "karpenter" {
   depends_on = [module.helm]
 }
 
+resource "kubectl_manifest" "letsencrypt" {
+  for_each  = data.kubectl_file_documents.karpenter.manifests
+  yaml_body = each.value
+
+  depends_on = [module.helm]
+}
+
 resource "aws_eks_addon" "pod_identity_agent" {
   cluster_name  = module.eks_bottlerocket.cluster_name
   addon_name    = "eks-pod-identity-agent"
