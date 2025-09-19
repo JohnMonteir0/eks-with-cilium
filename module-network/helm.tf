@@ -162,6 +162,38 @@ resource "helm_release" "cilium" {
   # }
 }
 
+resource "helm_release" "tetragon" {
+  name             = "tetragon"
+  namespace        = "kube-system"
+  repository       = "https://helm.cilium.io/"
+  chart            = "tetragon"
+  version          = "1.5.0"
+  create_namespace = false
+  wait             = true
+  timeout          = 600
+
+  values = [
+    yamlencode({
+      tetragon = {
+        # Enable Prometheus metrics
+        prometheus = {
+          enabled = false
+          serviceMonitor = {
+            enabled = false
+          }
+        }
+
+        # Enable tracing of process execution
+        tracingPolicy = {
+          enabled = true
+        }
+      }
+    })
+  ]
+  depends_on = [helm_release.cilium]
+}
+
+
 ### Kube Prometheus ###
 # resource "helm_release" "kube_prometheus_stack" {
 #   name             = "kube-prometheus-stack"
