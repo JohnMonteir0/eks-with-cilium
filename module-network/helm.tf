@@ -104,62 +104,62 @@ resource "helm_release" "cilium" {
     value = "Prefix"
   }
 
-  # set {
-  #   name  = "hubble.metrics.enabled[0]"
-  #   value = "dns"
-  # }
-  # set {
-  #   name  = "hubble.metrics.enabled[1]"
-  #   value = "drop"
-  # }
-  # set {
-  #   name  = "hubble.metrics.enabled[2]"
-  #   value = "tcp"
-  # }
-  # set {
-  #   name  = "hubble.metrics.enabled[3]"
-  #   value = "flow"
-  # }
-  # set {
-  #   name  = "hubble.metrics.enabled[4]"
-  #   value = "port-distribution"
-  # }
-  # set {
-  #   name  = "hubble.metrics.enabled[5]"
-  #   value = "icmp"
-  # }
-  # set {
-  #   name  = "hubble.metrics.enabled[6]"
-  #   value = "httpV2:exemplars=true;labelsContext=source_ip\\,source_namespace\\,source_workload\\,destination_ip\\,destination_namespace\\,destination_workload\\,traffic_direction"
-  # }
-  # set {
-  #   name  = "hubble.metrics.serviceMonitor.enabled"
-  #   value = "true"
-  # }
+  set {
+    name  = "hubble.metrics.enabled[0]"
+    value = "dns"
+  }
+  set {
+    name  = "hubble.metrics.enabled[1]"
+    value = "drop"
+  }
+  set {
+    name  = "hubble.metrics.enabled[2]"
+    value = "tcp"
+  }
+  set {
+    name  = "hubble.metrics.enabled[3]"
+    value = "flow"
+  }
+  set {
+    name  = "hubble.metrics.enabled[4]"
+    value = "port-distribution"
+  }
+  set {
+    name  = "hubble.metrics.enabled[5]"
+    value = "icmp"
+  }
+  set {
+    name  = "hubble.metrics.enabled[6]"
+    value = "httpV2:exemplars=true;labelsContext=source_ip\\,source_namespace\\,source_workload\\,destination_ip\\,destination_namespace\\,destination_workload\\,traffic_direction"
+  }
+  set {
+    name  = "hubble.metrics.serviceMonitor.enabled"
+    value = "true"
+  }
 
-  # set {
-  #   name  = "prometheus.enabled"
-  #   value = "true"
-  # }
+  set {
+    name  = "prometheus.enabled"
+    value = "true"
+  }
 
-  # set {
-  #   name  = "prometheus.serviceMonitor.enabled"
-  #   value = "true"
-  # }
-  # set {
-  #   name  = "operator.prometheus.enabled"
-  #   value = "true"
-  # }
+  set {
+    name  = "prometheus.serviceMonitor.enabled"
+    value = "true"
+  }
+  set {
+    name  = "operator.prometheus.enabled"
+    value = "true"
+  }
 
-  # set {
-  #   name  = "operator.prometheus.serviceMonitor.enabled"
-  #   value = "true"
-  # }
+  set {
+    name  = "operator.prometheus.serviceMonitor.enabled"
+    value = "true"
+  }
 
-  # set {
-  #   name  = "hubble.metrics.enableOpenMetrics"
-  #   value = "true"
-  # }
+  set {
+    name  = "hubble.metrics.enableOpenMetrics"
+    value = "true"
+  }
 }
 
 resource "helm_release" "tetragon" {
@@ -177,9 +177,9 @@ resource "helm_release" "tetragon" {
       tetragon = {
         # Enable Prometheus metrics
         prometheus = {
-          enabled = false
+          enabled = true
           serviceMonitor = {
-            enabled = false
+            enabled = true
           }
         }
 
@@ -195,31 +195,31 @@ resource "helm_release" "tetragon" {
 
 
 ### Kube Prometheus ###
-# resource "helm_release" "kube_prometheus_stack" {
-#   name             = "kube-prometheus-stack"
-#   repository       = "https://prometheus-community.github.io/helm-charts"
-#   chart            = "kube-prometheus-stack"
-#   version          = "65.5.0"
-#   namespace        = "monitoring"
-#   create_namespace = true
-#   atomic           = true
-#   timeout          = 900
+resource "helm_release" "kube_prometheus_stack" {
+  name             = "kube-prometheus-stack"
+  repository       = "https://prometheus-community.github.io/helm-charts"
+  chart            = "kube-prometheus-stack"
+  version          = "77.9.1"
+  namespace        = "monitoring"
+  create_namespace = true
+  atomic           = true
+  timeout          = 900
 
-#   # helm_release.kube_prometheus_stack
-#   values = [
-#     yamlencode({
-#       prometheus = {
-#         prometheusSpec = {
-#           serviceMonitorSelector                  = {}
-#           serviceMonitorNamespaceSelector         = {}
-#           podMonitorSelector                      = {}
-#           podMonitorNamespaceSelector             = {}
-#           serviceMonitorSelectorNilUsesHelmValues = false
-#           podMonitorSelectorNilUsesHelmValues     = false
-#         }
-#       }
-#     })
-#   ]
+  # helm_release.kube_prometheus_stack
+  values = [
+    yamlencode({
+      prometheus = {
+        prometheusSpec = {
+          serviceMonitorSelector                  = {}
+          serviceMonitorNamespaceSelector         = {}
+          podMonitorSelector                      = {}
+          podMonitorNamespaceSelector             = {}
+          serviceMonitorSelectorNilUsesHelmValues = false
+          podMonitorSelectorNilUsesHelmValues     = false
+        }
+      }
+    })
+  ]
 
-#   depends_on = [helm_release.cilium]
-# }
+  depends_on = [helm_release.cilium]
+}

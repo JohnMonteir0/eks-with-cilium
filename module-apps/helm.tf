@@ -172,10 +172,10 @@ resource "helm_release" "cert_manager" {
     value = "true"
   }
 
-  # set {
-  #   name  = "prometheus.enabled"
-  #   value = "true"
-  # }
+  set {
+    name  = "prometheus.enabled"
+    value = "true"
+  }
 
   set {
     name  = "webhook.timeoutSeconds"
