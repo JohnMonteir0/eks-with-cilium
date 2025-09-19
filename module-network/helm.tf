@@ -220,6 +220,4 @@ resource "helm_release" "kube_prometheus_stack" {
       }
     })
   ]
-
-  depends_on = [helm_release.cilium]
 }
