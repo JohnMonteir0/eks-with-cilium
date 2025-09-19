@@ -162,6 +162,10 @@ resource "helm_release" "cert_manager" {
   chart            = "cert-manager"
   version          = "v1.18.2"
   create_namespace = true
+  timeout          = 900
+  wait             = true
+  replace          = true
+  atomic           = true
 
   set {
     name  = "installCRDs"
@@ -182,6 +186,10 @@ resource "helm_release" "cert_manager" {
     name  = "replicaCount"
     value = "2"
   }
+  depends_on = [
+    helm_release.aws_load_balancer_controller,
+    helm_release.ingress-nginx
+  ]
 }
 
 ### Argocd ###
