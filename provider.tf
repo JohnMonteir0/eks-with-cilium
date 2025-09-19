@@ -24,10 +24,10 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "terraform-backend-statebucket-aztzyht2ptls"
+    bucket         = "terraform-backend-statebucket-3hmaeypc9hjq"
     key            = "terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "terraform-backend-LockTable-10P2O1EN16W3N"
+    dynamodb_table = "terraform-backend-LockTable-1LY8D2BAEY93J"
     encrypt        = true
   }
 }
