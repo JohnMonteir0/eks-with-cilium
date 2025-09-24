@@ -59,7 +59,7 @@ resource "helm_release" "cilium" {
   }
 
   # =============================
-  # Hubble (relay + UI + metrics)
+  # Hubble (relay + UI)
   # =============================
   set {
     name  = "hubble.enabled"
@@ -104,62 +104,65 @@ resource "helm_release" "cilium" {
     value = "Prefix"
   }
 
-  set {
-    name  = "hubble.metrics.enabled[0]"
-    value = "dns"
-  }
-  set {
-    name  = "hubble.metrics.enabled[1]"
-    value = "drop"
-  }
-  set {
-    name  = "hubble.metrics.enabled[2]"
-    value = "tcp"
-  }
-  set {
-    name  = "hubble.metrics.enabled[3]"
-    value = "flow"
-  }
-  set {
-    name  = "hubble.metrics.enabled[4]"
-    value = "port-distribution"
-  }
-  set {
-    name  = "hubble.metrics.enabled[5]"
-    value = "icmp"
-  }
-  set {
-    name  = "hubble.metrics.enabled[6]"
-    value = "httpV2:exemplars=true;labelsContext=source_ip\\,source_namespace\\,source_workload\\,destination_ip\\,destination_namespace\\,destination_workload\\,traffic_direction"
-  }
-  set {
-    name  = "hubble.metrics.serviceMonitor.enabled"
-    value = "true"
-  }
+  # =============================
+  # Hubble (metrics)
+  # =============================
+  # set {
+  #   name  = "hubble.metrics.enabled[0]"
+  #   value = "dns"
+  # }
+  # set {
+  #   name  = "hubble.metrics.enabled[1]"
+  #   value = "drop"
+  # }
+  # set {
+  #   name  = "hubble.metrics.enabled[2]"
+  #   value = "tcp"
+  # }
+  # set {
+  #   name  = "hubble.metrics.enabled[3]"
+  #   value = "flow"
+  # }
+  # set {
+  #   name  = "hubble.metrics.enabled[4]"
+  #   value = "port-distribution"
+  # }
+  # set {
+  #   name  = "hubble.metrics.enabled[5]"
+  #   value = "icmp"
+  # }
+  # set {
+  #   name  = "hubble.metrics.enabled[6]"
+  #   value = "httpV2:exemplars=true;labelsContext=source_ip\\,source_namespace\\,source_workload\\,destination_ip\\,destination_namespace\\,destination_workload\\,traffic_direction"
+  # }
+  # set {
+  #   name  = "hubble.metrics.serviceMonitor.enabled"
+  #   value = "true"
+  # }
 
-  set {
-    name  = "prometheus.enabled"
-    value = "true"
-  }
+  # set {
+  #   name  = "prometheus.enabled"
+  #   value = "true"
+  # }
 
-  set {
-    name  = "prometheus.serviceMonitor.enabled"
-    value = "true"
-  }
-  set {
-    name  = "operator.prometheus.enabled"
-    value = "true"
-  }
+  # set {
+  #   name  = "prometheus.serviceMonitor.enabled"
+  #   value = "true"
+  # }
+  # set {
+  #   name  = "operator.prometheus.enabled"
+  #   value = "true"
+  # }
 
-  set {
-    name  = "operator.prometheus.serviceMonitor.enabled"
-    value = "true"
-  }
+  # set {
+  #   name  = "operator.prometheus.serviceMonitor.enabled"
+  #   value = "true"
+  # }
 
-  set {
-    name  = "hubble.metrics.enableOpenMetrics"
-    value = "true"
-  }
+  # set {
+  #   name  = "hubble.metrics.enableOpenMetrics"
+  #   value = "true"
+  # }
 }
 
 resource "helm_release" "tetragon" {
@@ -175,11 +178,11 @@ resource "helm_release" "tetragon" {
   values = [
     yamlencode({
       tetragon = {
-        # Enable Prometheus metrics
+        # Prometheus metrics optons
         prometheus = {
-          enabled = true
+          enabled = false
           serviceMonitor = {
-            enabled = true
+            enabled = false
           }
         }
 

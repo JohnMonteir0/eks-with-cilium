@@ -5,10 +5,13 @@
 #   namespace: monitoring
 #   annotations:
 #     nginx.ingress.kubernetes.io/rewrite-target: /
+#     nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
+#     nginx.ingress.kubernetes.io/backend-protocol: HTTP
+#     external-dns.alpha.kubernetes.io/hostname: grafana.410859982986.realhandsonlabs.net
 # spec:
 #   ingressClassName: nginx
 #   rules:
-#   - host: grafana.533267208345.realhandsonlabs.net
+#   - host: grafana.410859982986.realhandsonlabs.net
 #     http:
 #       paths:
 #       - path: /
@@ -26,10 +29,13 @@
 #   namespace: monitoring
 #   annotations:
 #     nginx.ingress.kubernetes.io/rewrite-target: /
+#     nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
+#     nginx.ingress.kubernetes.io/backend-protocol: HTTP
+#     external-dns.alpha.kubernetes.io/hostname: prometheus.410859982986.realhandsonlabs.net
 # spec:
 #   ingressClassName: nginx
 #   rules:
-#   - host: prometheus.533267208344.realhandsonlabs.net
+#   - host: prometheus.410859982986.realhandsonlabs.net
 #     http:
 #       paths:
 #       - path: /
