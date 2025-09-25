@@ -283,28 +283,28 @@ resource "helm_release" "jaeger" {
     yamlencode({
       fullnameOverride = "jaeger"
 
-      # NOT provision external datastore (prevents Cassandra/ES subcharts)
-      provisionDataStore = false
-
-      storage = {
-        type = "memory" # all-in-one in-memory store
+      # pass as MAP, not boolean
+      provisionDataStore = {
+        cassandra     = false
+        elasticsearch = false
       }
 
-      # run all-in-one (includes collector & query inside one pod)
-      allInOne = { enabled = true }
+      storage = {
+        type = "memory"
+      }
 
-      # avoid extra components that create duplicate services
-      collector = { enabled = false }
-      agent     = { enabled = false }
+      allInOne = {
+        enabled = true
+      }
 
-      # belt-and-suspenders: hard-disable any DB helpers if present
+      # belt & suspenders: disable helpers/subcharts
       cassandra     = { enabled = false }
       elasticsearch = { enabled = false }
       kafka         = { enabled = false }
       indexCleaner  = { enabled = false }
       esRollover    = { enabled = false }
 
-      # expose the UI via nginx ingress
+      # expose UI via ingress (hosts as array of strings for this chart)
       query = {
         enabled = true
         service = {
