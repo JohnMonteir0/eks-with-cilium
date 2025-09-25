@@ -276,50 +276,21 @@ resource "helm_release" "jaeger" {
   repository       = "https://jaegertracing.github.io/helm-charts"
   chart            = "jaeger"
   version          = "0.73.1"
-  atomic           = true
   create_namespace = true
+  atomic           = true
 
   values = [
     yamlencode({
-      fullnameOverride = "jaeger"
-
-      storage = {
-        type = "memory"
-      }
-
-      # Run all-in-one (collector + query + agent in one pod)
       allInOne = {
         enabled = true
       }
-
-      # Collector (accepts traces from OTEL)
-      collector = {
-        enabled = true
-        service = {
-          grpc = {
-            port = 14250
-          }
-        }
-      }
-
-      # Query UI (no ingress, only ClusterIP service)
-      query = {
-        enabled = true
-        service = {
-          type = "ClusterIP"
-          ports = {
-            http = 16686
-          }
-        }
-      }
-
-      # Disable agent
-      agent = {
-        enabled = false
+      storage = {
+        type = "memory"
       }
     })
   ]
 }
+
 
 
 
