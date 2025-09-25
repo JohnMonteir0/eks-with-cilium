@@ -278,6 +278,7 @@ resource "helm_release" "jaeger" {
   version          = "0.73.1"
   create_namespace = true
   atomic           = true
+  cleanup_on_fail  = true
 
   values = [
     yamlencode({
@@ -290,6 +291,7 @@ resource "helm_release" "jaeger" {
     })
   ]
 }
+
 
 
 
