@@ -315,7 +315,7 @@ resource "helm_release" "jaeger" {
           enabled          = true
           ingressClassName = "nginx"
           hosts = [{
-            host = "jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
+            host = ["jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"]
             paths = [{
               path     = "/"
               pathType = "Prefix"
