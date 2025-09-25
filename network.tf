@@ -54,11 +54,14 @@ resource "aws_subnet" "pods" {
   # Ensure the secondary CIDR is attached first
   depends_on = [aws_vpc_ipv4_cidr_block_association.pods]
 
-  tags = {
-    Name                                        = "cilium-pod-${each.key}"
-    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
-    "cilium-pod-subnet"                         = "true"
-  }
+  tags = merge(
+    local.tags,
+    {
+      Name                                        = "cilium-pod-${each.key}"
+      "kubernetes.io/cluster/${var.cluster_name}" = "shared"
+      "cilium-pod-subnet"                         = "true"
+    }
+  )
 }
 
 ################################################################################
