@@ -283,34 +283,25 @@ resource "helm_release" "jaeger" {
     yamlencode({
       fullnameOverride = "jaeger"
 
-      # pass as MAP, not boolean
+      # MUST be a map on this chart version
       provisionDataStore = {
         cassandra     = false
         elasticsearch = false
       }
 
-      storage = {
-        type = "memory"
-      }
+      storage = { type = "memory" }
 
+      # one pod that exposes query/collector/agent services
       allInOne = {
         enabled = true
-      }
 
-      # belt & suspenders: disable helpers/subcharts
-      cassandra     = { enabled = false }
-      elasticsearch = { enabled = false }
-      kafka         = { enabled = false }
-      indexCleaner  = { enabled = false }
-      esRollover    = { enabled = false }
-
-      # expose UI via ingress (hosts as array of strings for this chart)
-      query = {
-        enabled = true
         service = {
-          type  = "ClusterIP"
-          ports = { http = 16686 }
+          ports = {
+            http = 16686
+          }
         }
+
+        # put ingress here (NOT under query.ingress)
         ingress = {
           enabled          = true
           ingressClassName = "nginx"
@@ -329,6 +320,18 @@ resource "helm_release" "jaeger" {
           }]
         }
       }
+
+      # turn OFF standalone components to avoid duplicate Services
+      query     = { enabled = false }
+      collector = { enabled = false }
+      agent     = { enabled = false }
+
+      # extra belts/suspenders
+      cassandra     = { enabled = false }
+      elasticsearch = { enabled = false }
+      kafka         = { enabled = false }
+      indexCleaner  = { enabled = false }
+      esRollover    = { enabled = false }
     })
   ]
 
@@ -338,6 +341,7 @@ resource "helm_release" "jaeger" {
     helm_release.cert_manager
   ]
 }
+
 
 
 
