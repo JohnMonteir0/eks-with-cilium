@@ -277,7 +277,7 @@ resource "helm_release" "jaeger" {
   chart            = "jaeger"
   version          = "0.73.1"
   atomic           = true
-  create_namespace = true
+  create_namespace = false
 
   values = [
     yamlencode({
