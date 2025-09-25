@@ -275,7 +275,7 @@ resource "helm_release" "jaeger" {
   namespace        = "giropops-senhas"
   repository       = "https://jaegertracing.github.io/helm-charts"
   chart            = "jaeger"
-  version          = "0.73.1"
+  version          = "1.53.0"
   create_namespace = true
   atomic           = true
 
@@ -291,21 +291,14 @@ resource "helm_release" "jaeger" {
         enabled = true
       }
 
-      collector = {
-        enabled = false
-      }
-
-      agent = {
-        enabled = false
-      }
+      collector = { enabled = false }
+      agent     = { enabled = false }
 
       query = {
         enabled = true
         service = {
-          type = "ClusterIP"
-          ports = {
-            http = 16686
-          }
+          type  = "ClusterIP"
+          ports = { http = 16686 }
         }
         ingress = {
           enabled          = true
@@ -316,17 +309,15 @@ resource "helm_release" "jaeger" {
             "external-dns.alpha.kubernetes.io/hostname"      = "jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
             "cert-manager.io/cluster-issuer"                 = "letsencrypt-staging"
           }
-          hosts = [{
-            host = "jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
-            paths = [{
-              path     = "/"
-              pathType = "Prefix"
-            }]
-          }]
-          tls = [{
-            hosts      = ["jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"]
-            secretName = "letsencrypt-staging"
-          }]
+          hosts = [
+            "jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
+          ]
+          tls = [
+            {
+              hosts      = ["jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"]
+              secretName = "letsencrypt-staging"
+            }
+          ]
         }
       }
     })
@@ -338,6 +329,7 @@ resource "helm_release" "jaeger" {
     helm_release.cert_manager
   ]
 }
+
 
 
 
