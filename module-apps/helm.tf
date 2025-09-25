@@ -287,12 +287,10 @@ resource "helm_release" "jaeger" {
         type = "memory"
       }
 
-      # Run all-in-one (collector + query + agent in one pod)
       allInOne = {
         enabled = true
       }
 
-      # Enable collector (accepts traces from OTEL)
       collector = {
         enabled = true
         service = {
@@ -302,7 +300,6 @@ resource "helm_release" "jaeger" {
         }
       }
 
-      # Jaeger query UI
       query = {
         enabled = true
         service = {
@@ -314,23 +311,27 @@ resource "helm_release" "jaeger" {
         ingress = {
           enabled          = true
           ingressClassName = "nginx"
-          hosts = [{
-            host = ["jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"]
-            paths = [{
-              path     = "/"
-              pathType = "Prefix"
-            }]
-          }]
+          hosts = [
+            {
+              host = "jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
+              paths = [
+                {
+                  path     = "/"
+                  pathType = "Prefix"
+                }
+              ]
+            }
+          ]
         }
       }
 
-      # Disable agent
       agent = {
         enabled = false
       }
     })
   ]
 }
+
 
 
 
