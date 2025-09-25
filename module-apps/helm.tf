@@ -277,6 +277,7 @@ resource "helm_release" "jaeger" {
   chart            = "jaeger"
   version          = "0.73.1"
   create_namespace = true
+  atomic           = true
 
   values = [
     yamlencode({
@@ -286,26 +287,63 @@ resource "helm_release" "jaeger" {
         type = "memory"
       }
 
-      # Run all-in-one (collector + query + agent in one pod)
       allInOne = {
         enabled = true
       }
 
-      # Disable everything else to avoid duplicate Services
       collector = {
-        enabled = false
-      }
-
-      query = {
         enabled = false
       }
 
       agent = {
         enabled = false
       }
+
+      query = {
+        enabled = true
+        service = {
+          type = "ClusterIP"
+          ports = {
+            http = 16686
+          }
+        }
+        ingress = {
+          enabled          = true
+          ingressClassName = "nginx"
+          annotations = {
+            "nginx.ingress.kubernetes.io/force-ssl-redirect" = "false"
+            "nginx.ingress.kubernetes.io/backend-protocol"   = "HTTP"
+            "external-dns.alpha.kubernetes.io/hostname"      = "jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
+            "cert-manager.io/cluster-issuer"                 = "letsencrypt-staging"
+          }
+          hosts = [
+            {
+              host = "jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
+              paths = [
+                {
+                  path     = "/"
+                  pathType = "Prefix"
+                }
+              ]
+            }
+          ]
+          tls = [
+            {
+              hosts      = ["jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"]
+              secretName = "letsencrypt-staging"
+            }
+          ]
+        }
+      }
     })
   ]
+  depends_on = [
+    helm_release.aws_load_balancer_controller,
+    helm_release.ingress-nginx,
+    helm_release.cert_manager
+  ]
 }
+
 
 
 
