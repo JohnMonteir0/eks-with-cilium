@@ -316,33 +316,29 @@ resource "helm_release" "jaeger" {
             "external-dns.alpha.kubernetes.io/hostname"      = "jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
             "cert-manager.io/cluster-issuer"                 = "letsencrypt-staging"
           }
-          hosts = [
-            {
-              host = "jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
-              paths = [
-                {
-                  path     = "/"
-                  pathType = "Prefix"
-                }
-              ]
-            }
-          ]
-          tls = [
-            {
-              hosts      = ["jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"]
-              secretName = "letsencrypt-staging"
-            }
-          ]
+          hosts = [{
+            host = "jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
+            paths = [{
+              path     = "/"
+              pathType = "Prefix"
+            }]
+          }]
+          tls = [{
+            hosts      = ["jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"]
+            secretName = "letsencrypt-staging"
+          }]
         }
       }
     })
   ]
+
   depends_on = [
     helm_release.aws_load_balancer_controller,
     helm_release.ingress-nginx,
     helm_release.cert_manager
   ]
 }
+
 
 
 
