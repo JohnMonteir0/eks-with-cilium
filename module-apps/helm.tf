@@ -276,6 +276,7 @@ resource "helm_release" "jaeger" {
   repository       = "https://jaegertracing.github.io/helm-charts"
   chart            = "jaeger"
   version          = "0.73.1"
+  atomic           = true
   create_namespace = true
 
   values = [
