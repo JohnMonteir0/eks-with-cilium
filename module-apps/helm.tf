@@ -281,7 +281,9 @@ resource "helm_release" "jaeger" {
 
   values = [
     yamlencode({
+      fullnameOverride   = "giropops-jaeger"
       provisionDataStore = true
+
       allInOne = {
         enabled = true
       }
