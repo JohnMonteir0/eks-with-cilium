@@ -277,17 +277,22 @@ resource "helm_release" "jaeger" {
   chart            = "jaeger"
   version          = "0.73.1"
   atomic           = true
-  create_namespace = false
+  create_namespace = true
 
   values = [
     yamlencode({
-      fullnameOverride   = "giropops-jaeger"
-      provisionDataStore = true
+      fullnameOverride = "jaeger"
 
+      storage = {
+        type = "memory"
+      }
+
+      # Run all-in-one (collector + query + agent in one pod)
       allInOne = {
         enabled = true
       }
 
+      # Enable collector (accepts traces from OTEL)
       collector = {
         enabled = true
         service = {
@@ -297,6 +302,7 @@ resource "helm_release" "jaeger" {
         }
       }
 
+      # Jaeger query UI
       query = {
         enabled = true
         service = {
@@ -305,23 +311,27 @@ resource "helm_release" "jaeger" {
             http = 16686
           }
         }
+        ingress = {
+          enabled          = true
+          ingressClassName = "nginx"
+          hosts = [{
+            host = "jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
+            paths = [{
+              path     = "/"
+              pathType = "Prefix"
+            }]
+          }]
+        }
       }
 
-      storage = {
-        type = "memory"
-      }
-
+      # Disable agent
       agent = {
         enabled = false
-      }
-
-      labels = {
-        app = "jaeger"
-        env = "labs"
       }
     })
   ]
 }
+
 
 
 
