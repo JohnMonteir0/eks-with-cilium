@@ -283,18 +283,28 @@ resource "helm_release" "jaeger" {
     yamlencode({
       fullnameOverride = "jaeger"
 
+      # NOT provision external datastore (prevents Cassandra/ES subcharts)
+      provisionDataStore = false
+
       storage = {
-        type = "memory"
+        type = "memory" # all-in-one in-memory store
       }
 
-      allInOne = {
-        enabled = true
-      }
+      # run all-in-one (includes collector & query inside one pod)
+      allInOne = { enabled = true }
 
+      # avoid extra components that create duplicate services
       collector = { enabled = false }
       agent     = { enabled = false }
-      cassandra = { enabled = false }
 
+      # belt-and-suspenders: hard-disable any DB helpers if present
+      cassandra     = { enabled = false }
+      elasticsearch = { enabled = false }
+      kafka         = { enabled = false }
+      indexCleaner  = { enabled = false }
+      esRollover    = { enabled = false }
+
+      # expose the UI via nginx ingress
       query = {
         enabled = true
         service = {
@@ -313,12 +323,10 @@ resource "helm_release" "jaeger" {
           hosts = [
             "jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
           ]
-          tls = [
-            {
-              hosts      = ["jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"]
-              secretName = "letsencrypt-staging"
-            }
-          ]
+          tls = [{
+            hosts      = ["jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"]
+            secretName = "letsencrypt-staging"
+          }]
         }
       }
     })
@@ -330,6 +338,7 @@ resource "helm_release" "jaeger" {
     helm_release.cert_manager
   ]
 }
+
 
 
 
