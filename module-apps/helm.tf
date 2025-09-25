@@ -293,6 +293,7 @@ resource "helm_release" "jaeger" {
 
       collector = { enabled = false }
       agent     = { enabled = false }
+      cassandra = { enabled = false }
 
       query = {
         enabled = true
