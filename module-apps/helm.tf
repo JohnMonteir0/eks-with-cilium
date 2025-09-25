@@ -277,20 +277,36 @@ resource "helm_release" "jaeger" {
   chart            = "jaeger"
   version          = "0.73.1"
   create_namespace = true
-  atomic           = true
-  cleanup_on_fail  = true
 
   values = [
     yamlencode({
+      fullnameOverride = "jaeger"
+
+      storage = {
+        type = "memory"
+      }
+
+      # Run all-in-one (collector + query + agent in one pod)
       allInOne = {
         enabled = true
       }
-      storage = {
-        type = "memory"
+
+      # Disable everything else to avoid duplicate Services
+      collector = {
+        enabled = false
+      }
+
+      query = {
+        enabled = false
+      }
+
+      agent = {
+        enabled = false
       }
     })
   ]
 }
+
 
 
 
