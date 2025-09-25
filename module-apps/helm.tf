@@ -270,4 +270,55 @@ resource "helm_release" "karpenter" {
   }
 }
 
+resource "helm_release" "jaeger" {
+  name             = "jaeger"
+  namespace        = "giropops-senhas"
+  repository       = "https://jaegertracing.github.io/helm-charts"
+  chart            = "jaeger"
+  version          = "0.73.1"
+  create_namespace = true
+
+  values = [
+    yamlencode({
+      provisionDataStore = true
+      allInOne = {
+        enabled = true
+      }
+
+      collector = {
+        enabled = true
+        service = {
+          grpc = {
+            port = 14250
+          }
+        }
+      }
+
+      query = {
+        enabled = true
+        service = {
+          type = "ClusterIP"
+          ports = {
+            http = 16686
+          }
+        }
+      }
+
+      storage = {
+        type = "memory"
+      }
+
+      agent = {
+        enabled = false
+      }
+
+      labels = {
+        app = "jaeger"
+        env = "labs"
+      }
+    })
+  ]
+}
+
+
 
