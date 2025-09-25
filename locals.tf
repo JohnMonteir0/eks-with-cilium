@@ -6,9 +6,9 @@ locals {
   azs      = slice(data.aws_availability_zones.available.names, 0, 3)
 
   tags = {
-    Cluster    = local.name
-    GithubRepo = "terraform-aws-eks"
-    GithubOrg  = "terraform-aws-modules"
+    Cluster     = local.name
+    GithubRepo  = "terraform-aws-eks"
+    Environment = "Dev"
   }
 }
 
