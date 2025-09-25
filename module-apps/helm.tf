@@ -275,7 +275,7 @@ resource "helm_release" "jaeger" {
   namespace        = "giropops-senhas"
   repository       = "https://jaegertracing.github.io/helm-charts"
   chart            = "jaeger"
-  version          = "1.53.0"
+  version          = "3.4.1"
   create_namespace = true
   atomic           = true
 
