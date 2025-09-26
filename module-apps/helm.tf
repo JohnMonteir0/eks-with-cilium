@@ -284,90 +284,6 @@ resource "helm_release" "jaeger" {
     yamlencode({
       fullnameOverride = "jaeger"
 
-      # MUST be a map on this chart version
-      provisionDataStore = {
-        cassandra     = false
-        elasticsearch = false
-      }
-
-      storage = { type = "memory" }
-
-      # one pod that exposes query/collector/agent services
-      allInOne = {
-        enabled = true
-
-        # ✅ actually enable OTLP receivers on the Jaeger process
-        options = {
-          "collector.otlp.enabled"        = true
-          "collector.otlp.grpc.host-port" = ":4317"
-          "collector.otlp.http.host-port" = ":4318"
-        }
-
-        service = {
-          ports = {
-            http      = 16686 # Jaeger UI
-            otlp-grpc = 4317  # Accept OTLP/gRPC directly
-            otlp-http = 4318  # Accept OTLP/HTTP
-            grpc      = 14250 # Jaeger gRPC (Collector ingestion)
-          }
-        }
-
-        # put ingress here (NOT under query.ingress)
-        ingress = {
-          enabled          = true
-          ingressClassName = "nginx"
-          annotations = {
-            "nginx.ingress.kubernetes.io/force-ssl-redirect" = "false"
-            "nginx.ingress.kubernetes.io/backend-protocol"   = "HTTP"
-            "external-dns.alpha.kubernetes.io/hostname"      = "jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
-            "cert-manager.io/cluster-issuer"                 = "letsencrypt-staging"
-          }
-          hosts = [
-            "jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
-          ]
-          tls = [{
-            hosts      = ["jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"]
-            secretName = "letsencrypt-staging"
-          }]
-        }
-      }
-
-      # turn OFF standalone components to avoid duplicate Services
-      query     = { enabled = false }
-      collector = { enabled = false }
-      agent     = { enabled = false }
-
-      # extra belts/suspenders
-      cassandra     = { enabled = false }
-      elasticsearch = { enabled = false }
-      kafka         = { enabled = false }
-      indexCleaner  = { enabled = false }
-      esRollover    = { enabled = false }
-    })
-  ]
-
-  depends_on = [
-    helm_release.aws_load_balancer_controller,
-    helm_release.ingress-nginx,
-    helm_release.cert_manager
-  ]
-}
-
-
-### Opentelemetry ###
-resource "helm_release" "jaeger" {
-  name             = "jaeger"
-  namespace        = "giropops-senhas"
-  repository       = "https://jaegertracing.github.io/helm-charts"
-  chart            = "jaeger"
-  version          = "3.4.1"
-  create_namespace = true
-  atomic           = true
-
-  values = [
-    yamlencode({
-      fullnameOverride = "jaeger"
-
       provisionDataStore = { cassandra = false, elasticsearch = false }
       storage            = { type = "memory" }
 
@@ -386,7 +302,7 @@ resource "helm_release" "jaeger" {
 
         service = {
           ports = {
-            # OTLP listeners we need:
+            # OTLP listeners we need
             otlp-grpc = 4317
             otlp-http = 4318
 
@@ -436,6 +352,103 @@ resource "helm_release" "jaeger" {
   ]
 }
 
+
+
+### Opentelemetry ###
+resource "helm_release" "otel_collector" {
+  name             = "otel-collector"
+  namespace        = "giropops-senhas"
+  repository       = "https://open-telemetry.github.io/opentelemetry-helm-charts"
+  chart            = "opentelemetry-collector"
+  version          = "0.132.0"
+  create_namespace = false
+  atomic           = true
+
+  values = [
+    yamlencode({
+      mode = "deployment"
+
+      image = {
+        # contrib image includes the Jaeger exporter
+        repository = "otel/opentelemetry-collector-contrib"
+        # tag can be pinned if you want, e.g. "0.112.0"
+      }
+
+      service = { type = "ClusterIP" }
+
+      config = {
+        receivers = {
+          otlp = {
+            protocols = {
+              grpc = { endpoint = "0.0.0.0:4317" }
+              http = { endpoint = "0.0.0.0:4318" }
+            }
+          }
+        }
+
+        processors = {
+          batch = {}
+        }
+
+        exporters = {
+          # Traces to Jaeger Collector gRPC
+          otlp = {
+            endpoint = "jaeger.giropops-senhas.svc.cluster.local:4317"
+            tls      = { insecure = true }
+          }
+
+          # Collector's own metrics for Prometheus scraping
+          prometheus = {
+            endpoint = "0.0.0.0:9464"
+          }
+
+          # Replaces deprecated "logging" exporter
+          debug = {
+            # verbosity: "basic" | "normal" | "detailed"
+            verbosity = "normal"
+          }
+        }
+
+        service = {
+          pipelines = {
+            traces = {
+              receivers  = ["otlp"]
+              processors = ["batch"]
+              exporters  = ["otlp", "debug"]
+            }
+            metrics = {
+              receivers  = ["otlp"]
+              processors = ["batch"]
+              exporters  = ["prometheus", "debug"]
+            }
+            logs = {
+              receivers  = ["otlp"]
+              processors = ["batch"]
+              exporters  = ["debug"]
+            }
+          }
+
+          # Optional: lower or raise internal collector log level
+          telemetry = {
+            logs = { level = "info" }
+          }
+        }
+      }
+
+      resources = {
+        requests = { cpu = "100m", memory = "256Mi" }
+        limits   = { cpu = "500m", memory = "512Mi" }
+      }
+    })
+  ]
+
+  depends_on = [
+    helm_release.jaeger,
+    helm_release.ingress-nginx,
+    helm_release.cert_manager,
+    helm_release.aws_load_balancer_controller,
+  ]
+}
 
 
 
