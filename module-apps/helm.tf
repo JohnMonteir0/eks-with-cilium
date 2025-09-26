@@ -296,6 +296,13 @@ resource "helm_release" "jaeger" {
       allInOne = {
         enabled = true
 
+        # ✅ actually enable OTLP receivers on the Jaeger process
+        options = {
+          "collector.otlp.enabled"        = true
+          "collector.otlp.grpc.host-port" = ":4317"
+          "collector.otlp.http.host-port" = ":4318"
+        }
+
         service = {
           ports = {
             http      = 16686 # Jaeger UI
@@ -345,6 +352,7 @@ resource "helm_release" "jaeger" {
     helm_release.cert_manager
   ]
 }
+
 
 ### Opentelemetry ###
 resource "helm_release" "otel_collector" {
