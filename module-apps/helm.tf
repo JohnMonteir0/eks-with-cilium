@@ -286,36 +286,26 @@ resource "helm_release" "jaeger" {
       provisionDataStore = { cassandra = false, elasticsearch = false }
       storage            = { type = "memory" }
 
-      # We are NOT using all-in-one here
-      allInOne = { enabled = false }
-
-      # ---- Collector (ingestion) ----
-      collector = {
+      # Use all-in-one so memory storage works
+      allInOne = {
         enabled = true
 
-        # ✅ Enable OTLP on the collector process (use extraArgs, not options)
+        # enable OTLP receivers on the all-in-one process
         extraArgs = [
           "--collector.otlp.enabled=true",
           "--collector.otlp.grpc.host-port=:4317",
           "--collector.otlp.http.host-port=:4318",
         ]
 
-        # ✅ Expose ports on the Service
         service = {
-          type = "ClusterIP"
           ports = {
-            otlp-grpc = 4317  # OTLP gRPC
-            otlp-http = 4318  # OTLP HTTP
-            grpc      = 14250 # Jaeger gRPC ingestion
-            http      = 14268 # Jaeger HTTP ingestion
-            zipkin    = 9411  # (optional) Zipkin ingestion
+            http      = 16686 # Jaeger UI
+            otlp-grpc = 4317  # OTLP gRPC ingest
+            otlp-http = 4318  # OTLP HTTP ingest
+            grpc      = 14250 # classic Jaeger gRPC ingest
           }
         }
-      }
 
-      # ---- Query (UI) ----
-      query = {
-        enabled = true
         ingress = {
           enabled          = true
           ingressClassName = "nginx"
@@ -325,22 +315,19 @@ resource "helm_release" "jaeger" {
             "external-dns.alpha.kubernetes.io/hostname"      = "jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
             "cert-manager.io/cluster-issuer"                 = "letsencrypt-staging"
           }
-          hosts = [
-            "jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
-          ]
+          hosts = ["jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"]
           tls = [{
             hosts      = ["jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"]
             secretName = "letsencrypt-staging"
           }]
         }
-        # If you still see an agent sidecar on the query pod, uncomment the next line:
-        # agent = { enabled = false }
       }
 
-      # No separate agent DaemonSet/Deployment
-      agent = { enabled = false }
+      # Turn OFF split components to avoid duplicates
+      query     = { enabled = false }
+      collector = { enabled = false }
+      agent     = { enabled = false }
 
-      # Extras off
       cassandra     = { enabled = false }
       elasticsearch = { enabled = false }
       kafka         = { enabled = false }
@@ -355,7 +342,6 @@ resource "helm_release" "jaeger" {
     helm_release.cert_manager
   ]
 }
-
 
 ### Opentelemetry ###
 resource "helm_release" "otel_collector" {
