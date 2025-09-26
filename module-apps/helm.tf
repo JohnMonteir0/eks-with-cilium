@@ -270,6 +270,7 @@ resource "helm_release" "karpenter" {
   }
 }
 
+### Jaeger ###
 resource "helm_release" "jaeger" {
   name             = "jaeger"
   namespace        = "giropops-senhas"
@@ -297,7 +298,10 @@ resource "helm_release" "jaeger" {
 
         service = {
           ports = {
-            http = 16686
+            http      = 16686 # Jaeger UI
+            otlp-grpc = 4317  # Accept OTLP/gRPC directly
+            otlp-http = 4318  # Accept OTLP/HTTP
+            grpc      = 14250 # Jaeger gRPC (Collector ingestion)
           }
         }
 
@@ -342,6 +346,114 @@ resource "helm_release" "jaeger" {
   ]
 }
 
+### Opentelemetry ###
+resource "helm_release" "otel_collector" {
+  name             = "otel-collector"
+  namespace        = "giropops-senhas"
+  repository       = "https://open-telemetry.github.io/opentelemetry-helm-charts"
+  chart            = "opentelemetry-collector"
+  version          = "0.132.0"
+  create_namespace = false
+  atomic           = true
+  timeout          = 600
+
+  values = [
+    yamlencode({
+      mode = "deployment"
+
+      image = {
+        repository = "otel/opentelemetry-collector"
+      }
+
+      # Collector service (ClusterIP)
+      service = {
+        type = "ClusterIP"
+        ports = {
+          otlp-grpc = {
+            enabled = true
+            port    = 4317
+          }
+          otlp-http = {
+            enabled = true
+            port    = 4318
+          }
+          # metrics endpoint that Prometheus scrapes
+          prom = {
+            enabled  = true
+            port     = 9464
+            name     = "prometheus"
+            protocol = "TCP"
+          }
+        }
+      }
+
+      config = {
+        receivers = {
+          otlp = {
+            protocols = {
+              grpc = {}
+              http = {}
+            }
+          }
+        }
+
+        processors = {
+          batch = {}
+          # optional: add attributes/resource detection, etc.
+        }
+
+        exporters = {
+          # Send traces to Jaeger all-in-one via gRPC
+          jaeger = {
+            endpoint = "jaeger:14250"
+            tls      = { insecure = true }
+          }
+
+          # Expose collector’s own metrics to /metrics on :9464
+          prometheus = {
+            endpoint = "0.0.0.0:9464"
+          }
+
+          logging = {
+            loglevel = "warn"
+          }
+        }
+
+        service = {
+          pipelines = {
+            traces = {
+              receivers  = ["otlp"]
+              processors = ["batch"]
+              exporters  = ["jaeger", "logging"]
+            }
+            metrics = {
+              receivers  = ["otlp"]
+              processors = ["batch"]
+              exporters  = ["prometheus", "logging"]
+            }
+            logs = {
+              receivers  = ["otlp"]
+              processors = ["batch"]
+              exporters  = ["logging"]
+            }
+          }
+        }
+      }
+
+      resources = {
+        requests = { cpu = "100m", memory = "256Mi" }
+        limits   = { cpu = "500m", memory = "512Mi" }
+      }
+    })
+  ]
+
+  depends_on = [
+    helm_release.jaeger,
+    helm_release.ingress_nginx,
+    helm_release.cert_manager,
+    helm_release.aws_load_balancer_controller,
+  ]
+}
 
 
 
