@@ -355,100 +355,87 @@ resource "helm_release" "jaeger" {
 
 
 ### Opentelemetry ###
-resource "helm_release" "otel_collector" {
-  name             = "otel-collector"
+resource "helm_release" "jaeger" {
+  name             = "jaeger"
   namespace        = "giropops-senhas"
-  repository       = "https://open-telemetry.github.io/opentelemetry-helm-charts"
-  chart            = "opentelemetry-collector"
-  version          = "0.132.0"
-  create_namespace = false
+  repository       = "https://jaegertracing.github.io/helm-charts"
+  chart            = "jaeger"
+  version          = "3.4.1"
+  create_namespace = true
   atomic           = true
 
   values = [
     yamlencode({
-      mode = "deployment"
+      fullnameOverride = "jaeger"
 
-      image = {
-        # contrib image includes the Jaeger exporter
-        repository = "otel/opentelemetry-collector-contrib"
-        # tag can be pinned if you want, e.g. "0.112.0"
-      }
+      provisionDataStore = { cassandra = false, elasticsearch = false }
+      storage            = { type = "memory" }
 
-      service = { type = "ClusterIP" }
+      # Disable allInOne
+      allInOne = { enabled = false }
 
-      config = {
-        receivers = {
-          otlp = {
-            protocols = {
-              grpc = { endpoint = "0.0.0.0:4317" }
-              http = { endpoint = "0.0.0.0:4318" }
-            }
-          }
-        }
+      # Enable the standalone collector and expose OTLP
+      collector = {
+        enabled = true
 
-        processors = {
-          batch = {}
-        }
-
-        exporters = {
-          # Traces to Jaeger Collector gRPC
-          otlp = {
-            endpoint = "jaeger.giropops-senhas.svc.cluster.local:4317"
-            tls      = { insecure = true }
-          }
-
-          # Collector's own metrics for Prometheus scraping
-          prometheus = {
-            endpoint = "0.0.0.0:9464"
-          }
-
-          # Replaces deprecated "logging" exporter
-          debug = {
-            # verbosity: "basic" | "normal" | "detailed"
-            verbosity = "normal"
-          }
+        options = {
+          "collector.otlp.enabled"        = true
+          "collector.otlp.grpc.host-port" = ":4317"
+          "collector.otlp.http.host-port" = ":4318"
         }
 
         service = {
-          pipelines = {
-            traces = {
-              receivers  = ["otlp"]
-              processors = ["batch"]
-              exporters  = ["otlp", "debug"]
-            }
-            metrics = {
-              receivers  = ["otlp"]
-              processors = ["batch"]
-              exporters  = ["prometheus", "debug"]
-            }
-            logs = {
-              receivers  = ["otlp"]
-              processors = ["batch"]
-              exporters  = ["debug"]
-            }
-          }
+          ports = {
+            # OTLP listeners we need:
+            otlp-grpc = 4317
+            otlp-http = 4318
 
-          # Optional: lower or raise internal collector log level
-          telemetry = {
-            logs = { level = "info" }
+            # (keep the classic Jaeger ports too if you want)
+            grpc   = 14250 # Jaeger gRPC ingestion
+            http   = 14268 # Jaeger HTTP ingestion
+            zipkin = 9411  # Zipkin ingestion (optional)
           }
         }
       }
 
-      resources = {
-        requests = { cpu = "100m", memory = "256Mi" }
-        limits   = { cpu = "500m", memory = "512Mi" }
+      query = {
+        enabled = true
+        ingress = {
+          enabled          = true
+          ingressClassName = "nginx"
+          annotations = {
+            "nginx.ingress.kubernetes.io/force-ssl-redirect" = "false"
+            "nginx.ingress.kubernetes.io/backend-protocol"   = "HTTP"
+            "external-dns.alpha.kubernetes.io/hostname"      = "jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
+            "cert-manager.io/cluster-issuer"                 = "letsencrypt-staging"
+          }
+          hosts = [
+            "jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
+          ]
+          tls = [{
+            hosts      = ["jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"]
+            secretName = "letsencrypt-staging"
+          }]
+        }
       }
+
+      agent = { enabled = false }
+
+      cassandra     = { enabled = false }
+      elasticsearch = { enabled = false }
+      kafka         = { enabled = false }
+      indexCleaner  = { enabled = false }
+      esRollover    = { enabled = false }
     })
   ]
 
   depends_on = [
-    helm_release.jaeger,
-    helm_release.ingress-nginx,
-    helm_release.cert_manager,
     helm_release.aws_load_balancer_controller,
+    helm_release.ingress-nginx,
+    helm_release.cert_manager
   ]
 }
+
 
 
 
