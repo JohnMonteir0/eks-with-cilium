@@ -362,13 +362,12 @@ resource "helm_release" "otel_collector" {
       mode = "deployment"
 
       image = {
+        # contrib image includes the Jaeger exporter
         repository = "otel/opentelemetry-collector-contrib"
+        # tag can be pinned if you want, e.g. "0.112.0"
       }
 
-      # Only type is supported here; ports will be created automatically
-      service = {
-        type = "ClusterIP"
-      }
+      service = { type = "ClusterIP" }
 
       config = {
         receivers = {
@@ -385,19 +384,21 @@ resource "helm_release" "otel_collector" {
         }
 
         exporters = {
-          # Send traces to Jaeger all-in-one via gRPC collector port
+          # Traces to Jaeger Collector gRPC
           jaeger = {
             endpoint = "jaeger.giropops-senhas.svc.cluster.local:14250"
             tls      = { insecure = true }
           }
 
-          # Expose collector’s own metrics to /metrics on :9464
+          # Collector's own metrics for Prometheus scraping
           prometheus = {
             endpoint = "0.0.0.0:9464"
           }
 
-          logging = {
-            loglevel = "warn"
+          # Replaces deprecated "logging" exporter
+          debug = {
+            # verbosity: "basic" | "normal" | "detailed"
+            verbosity = "normal"
           }
         }
 
@@ -406,18 +407,23 @@ resource "helm_release" "otel_collector" {
             traces = {
               receivers  = ["otlp"]
               processors = ["batch"]
-              exporters  = ["jaeger", "logging"]
+              exporters  = ["jaeger", "debug"]
             }
             metrics = {
               receivers  = ["otlp"]
               processors = ["batch"]
-              exporters  = ["prometheus", "logging"]
+              exporters  = ["prometheus", "debug"]
             }
             logs = {
               receivers  = ["otlp"]
               processors = ["batch"]
-              exporters  = ["logging"]
+              exporters  = ["debug"]
             }
+          }
+
+          # Optional: lower or raise internal collector log level
+          telemetry = {
+            logs = { level = "info" }
           }
         }
       }
@@ -436,6 +442,7 @@ resource "helm_release" "otel_collector" {
     helm_release.aws_load_balancer_controller,
   ]
 }
+
 
 
 
