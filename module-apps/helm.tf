@@ -282,38 +282,38 @@ resource "helm_release" "jaeger" {
 
   values = [
     yamlencode({
-      fullnameOverride = "jaeger"
-
+      fullnameOverride   = "jaeger"
       provisionDataStore = { cassandra = false, elasticsearch = false }
       storage            = { type = "memory" }
 
-      # Disable allInOne
+      # We are NOT using all-in-one here
       allInOne = { enabled = false }
 
-      # Enable the standalone collector and expose OTLP
+      # ---- Collector (ingestion) ----
       collector = {
         enabled = true
 
-        options = {
-          "collector.otlp.enabled"        = true
-          "collector.otlp.grpc.host-port" = ":4317"
-          "collector.otlp.http.host-port" = ":4318"
-        }
+        # ✅ Enable OTLP on the collector process (use extraArgs, not options)
+        extraArgs = [
+          "--collector.otlp.enabled=true",
+          "--collector.otlp.grpc.host-port=:4317",
+          "--collector.otlp.http.host-port=:4318",
+        ]
 
+        # ✅ Expose ports on the Service
         service = {
+          type = "ClusterIP"
           ports = {
-            # OTLP listeners we need
-            otlp-grpc = 4317
-            otlp-http = 4318
-
-            # (keep the classic Jaeger ports too if you want)
-            grpc   = 14250 # Jaeger gRPC ingestion
-            http   = 14268 # Jaeger HTTP ingestion
-            zipkin = 9411  # Zipkin ingestion (optional)
+            otlp-grpc = 4317  # OTLP gRPC
+            otlp-http = 4318  # OTLP HTTP
+            grpc      = 14250 # Jaeger gRPC ingestion
+            http      = 14268 # Jaeger HTTP ingestion
+            zipkin    = 9411  # (optional) Zipkin ingestion
           }
         }
       }
 
+      # ---- Query (UI) ----
       query = {
         enabled = true
         ingress = {
@@ -333,10 +333,14 @@ resource "helm_release" "jaeger" {
             secretName = "letsencrypt-staging"
           }]
         }
+        # If you still see an agent sidecar on the query pod, uncomment the next line:
+        # agent = { enabled = false }
       }
 
+      # No separate agent DaemonSet/Deployment
       agent = { enabled = false }
 
+      # Extras off
       cassandra     = { enabled = false }
       elasticsearch = { enabled = false }
       kafka         = { enabled = false }
@@ -351,7 +355,6 @@ resource "helm_release" "jaeger" {
     helm_release.cert_manager
   ]
 }
-
 
 
 ### Opentelemetry ###
