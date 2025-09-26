@@ -362,7 +362,7 @@ resource "helm_release" "otel_collector" {
       mode = "deployment"
 
       image = {
-        repository = "otel/opentelemetry-collector"
+        repository = "otel/opentelemetry-collector-contrib"
       }
 
       # Only type is supported here; ports will be created automatically
