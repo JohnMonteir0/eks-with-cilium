@@ -286,26 +286,34 @@ resource "helm_release" "jaeger" {
       provisionDataStore = { cassandra = false, elasticsearch = false }
       storage            = { type = "memory" }
 
-      # Use all-in-one so memory storage works
-      allInOne = {
+      # Use split components
+      allInOne = { enabled = false }
+
+      # --- Collector (enable OTLP gRPC/HTTP listeners) ---
+      collector = {
         enabled = true
 
-        # enable OTLP receivers on the all-in-one process
-        extraArgs = [
-          "--collector.otlp.enabled=true",
-          "--collector.otlp.grpc.host-port=:4317",
-          "--collector.otlp.http.host-port=:4318",
-        ]
-
-        service = {
-          ports = {
-            http      = 16686 # Jaeger UI
-            otlp-grpc = 4317  # OTLP gRPC ingest
-            otlp-http = 4318  # OTLP HTTP ingest
-            grpc      = 14250 # classic Jaeger gRPC ingest
-          }
+        options = {
+          "collector.otlp.enabled"        = true
+          "collector.otlp.grpc.host-port" = ":4317"
+          "collector.otlp.http.host-port" = ":4318"
         }
 
+        # Expose ports on the Service (so other pods can hit them)
+        service = {
+          ports = {
+            otlp-grpc = 4317
+            otlp-http = 4318
+            grpc      = 14250 # classic Jaeger gRPC ingestion
+            http      = 14268 # classic Jaeger HTTP ingestion
+            zipkin    = 9411  # optional
+          }
+        }
+      }
+
+      # --- Query (UI) + Ingress ---
+      query = {
+        enabled = true
         ingress = {
           enabled          = true
           ingressClassName = "nginx"
@@ -323,11 +331,8 @@ resource "helm_release" "jaeger" {
         }
       }
 
-      # Turn OFF split components to avoid duplicates
-      query     = { enabled = false }
-      collector = { enabled = false }
-      agent     = { enabled = false }
-
+      # Off anything we don't need
+      agent         = { enabled = false }
       cassandra     = { enabled = false }
       elasticsearch = { enabled = false }
       kafka         = { enabled = false }
@@ -342,6 +347,7 @@ resource "helm_release" "jaeger" {
     helm_release.cert_manager
   ]
 }
+
 
 ### Opentelemetry ###
 resource "helm_release" "otel_collector" {
@@ -358,9 +364,7 @@ resource "helm_release" "otel_collector" {
       mode = "deployment"
 
       image = {
-        # contrib image includes the Jaeger exporter
         repository = "otel/opentelemetry-collector-contrib"
-        # tag can be pinned if you want, e.g. "0.112.0"
       }
 
       service = { type = "ClusterIP" }
@@ -375,52 +379,29 @@ resource "helm_release" "otel_collector" {
           }
         }
 
-        processors = {
-          batch = {}
-        }
+        processors = { batch = {} }
 
         exporters = {
-          # Traces to Jaeger Collector gRPC
+          # ✅ Send traces to Jaeger Collector (gRPC OTLP)
           otlp = {
-            endpoint = "jaeger.giropops-senhas.svc.cluster.local:4317"
+            endpoint = "jaeger-collector.giropops-senhas.svc.cluster.local:4317"
             tls      = { insecure = true }
           }
 
-          # Collector's own metrics for Prometheus scraping
-          prometheus = {
-            endpoint = "0.0.0.0:9464"
-          }
+          # Expose Collector metrics to Prometheus (optional)
+          prometheus = { endpoint = "0.0.0.0:9464" }
 
-          # Replaces deprecated "logging" exporter
-          debug = {
-            # verbosity: "basic" | "normal" | "detailed"
-            verbosity = "normal"
-          }
+          # Useful for debugging
+          debug = { verbosity = "normal" }
         }
 
         service = {
           pipelines = {
-            traces = {
-              receivers  = ["otlp"]
-              processors = ["batch"]
-              exporters  = ["otlp", "debug"]
-            }
-            metrics = {
-              receivers  = ["otlp"]
-              processors = ["batch"]
-              exporters  = ["prometheus", "debug"]
-            }
-            logs = {
-              receivers  = ["otlp"]
-              processors = ["batch"]
-              exporters  = ["debug"]
-            }
+            traces  = { receivers = ["otlp"], processors = ["batch"], exporters = ["otlp", "debug"] }
+            metrics = { receivers = ["otlp"], processors = ["batch"], exporters = ["prometheus", "debug"] }
+            logs    = { receivers = ["otlp"], processors = ["batch"], exporters = ["debug"] }
           }
-
-          # Optional: lower or raise internal collector log level
-          telemetry = {
-            logs = { level = "info" }
-          }
+          telemetry = { logs = { level = "info" } }
         }
       }
 
@@ -438,6 +419,7 @@ resource "helm_release" "otel_collector" {
     helm_release.aws_load_balancer_controller,
   ]
 }
+
 
 
 
