@@ -365,47 +365,29 @@ resource "helm_release" "otel_collector" {
         repository = "otel/opentelemetry-collector"
       }
 
-      # Collector service (ClusterIP)
+      # Only type is supported here; ports will be created automatically
       service = {
         type = "ClusterIP"
-        ports = {
-          otlp-grpc = {
-            enabled = true
-            port    = 4317
-          }
-          otlp-http = {
-            enabled = true
-            port    = 4318
-          }
-          # metrics endpoint that Prometheus scrapes
-          prom = {
-            enabled  = true
-            port     = 9464
-            name     = "prometheus"
-            protocol = "TCP"
-          }
-        }
       }
 
       config = {
         receivers = {
           otlp = {
             protocols = {
-              grpc = {}
-              http = {}
+              grpc = { endpoint = "0.0.0.0:4317" }
+              http = { endpoint = "0.0.0.0:4318" }
             }
           }
         }
 
         processors = {
           batch = {}
-          # optional: add attributes/resource detection, etc.
         }
 
         exporters = {
-          # Send traces to Jaeger all-in-one via gRPC
+          # Send traces to Jaeger all-in-one via gRPC collector port
           jaeger = {
-            endpoint = "jaeger:14250"
+            endpoint = "jaeger.giropops-senhas.svc.cluster.local:14250"
             tls      = { insecure = true }
           }
 
@@ -454,6 +436,7 @@ resource "helm_release" "otel_collector" {
     helm_release.aws_load_balancer_controller,
   ]
 }
+
 
 
 
