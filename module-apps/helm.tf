@@ -406,7 +406,7 @@ resource "helm_release" "otel_collector" {
             traces = {
               receivers  = ["otlp"]
               processors = ["batch"]
-              exporters  = ["jaeger", "debug"]
+              exporters  = ["otlp", "debug"]
             }
             metrics = {
               receivers  = ["otlp"]
