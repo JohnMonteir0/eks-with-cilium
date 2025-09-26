@@ -355,7 +355,6 @@ resource "helm_release" "otel_collector" {
   version          = "0.132.0"
   create_namespace = false
   atomic           = true
-  timeout          = 600
 
   values = [
     yamlencode({
@@ -385,8 +384,8 @@ resource "helm_release" "otel_collector" {
 
         exporters = {
           # Traces to Jaeger Collector gRPC
-          jaeger = {
-            endpoint = "jaeger.giropops-senhas.svc.cluster.local:14250"
+          otlp = {
+            endpoint = "jaeger.giropops-senhas.svc.cluster.local:4317"
             tls      = { insecure = true }
           }
 
