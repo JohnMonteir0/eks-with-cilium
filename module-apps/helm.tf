@@ -449,7 +449,7 @@ resource "helm_release" "otel_collector" {
 
   depends_on = [
     helm_release.jaeger,
-    helm_release.ingress_nginx,
+    helm_release.ingress-nginx,
     helm_release.cert_manager,
     helm_release.aws_load_balancer_controller,
   ]
