@@ -284,69 +284,32 @@ resource "helm_release" "jaeger" {
     yamlencode({
       fullnameOverride = "jaeger"
 
-      # use Elasticsearch storage and have the chart provision it
-      storage = {
-        type = "elasticsearch"
-        elasticsearch = {
-          host   = "jaeger-elasticsearch-master"
-          port   = 9200
-          scheme = "http"
-        }
-      }
+      # keep it in-memory to avoid any datastore headaches
+      storage = { type = "memory" }
 
-      provisionDataStore = { cassandra = false, elasticsearch = true }
-
-      # Let the chart spin up a single-node ES (dev/lab)
-      elasticsearch = {
-        enabled  = true
-        replicas = 1
-        persistence = {
-          enabled = true
-          size    = "20Gi"
-        }
-        resources = {
-          requests = { cpu = "200m", memory = "1Gi" }
-          limits   = { cpu = "1", memory = "2Gi" }
-        }
-      }
-
-      # optional maintenance jobs
-      indexCleaner = {
-        enabled      = true
-        numberOfDays = 3
-        schedule     = "55 23 * * *"
-      }
-      esRollover = {
-        enabled  = true
-        schedule = "0 0 * * *"
-      }
-
-      # split components
-      allInOne  = { enabled = false }
-      agent     = { enabled = false }
-      cassandra = { enabled = false }
-      kafka     = { enabled = false }
-
-      collector = {
+      # run a single all-in-one pod (collector+query+ingester)
+      allInOne = {
         enabled = true
-        options = {
-          "collector.otlp.enabled"        = true
-          "collector.otlp.grpc.host-port" = ":4317"
-          "collector.otlp.http.host-port" = ":4318"
-        }
+
+        # turn on OTLP listeners on the all-in-one process
+        extraArgs = [
+          "--collector.otlp.enabled=true",
+          "--collector.otlp.grpc.host-port=:4317",
+          "--collector.otlp.http.host-port=:4318",
+        ]
+
+        # expose the ports we need on the Service named "jaeger"
         service = {
           ports = {
-            otlp-grpc = 4317
-            otlp-http = 4318
-            grpc      = 14250
-            http      = 14268
-            zipkin    = 9411
+            http        = 16686 # UI
+            otlp-grpc   = 4317  # OTLP gRPC ingest
+            otlp-http   = 4318  # OTLP HTTP ingest
+            grpc        = 14250 # classic Jaeger gRPC ingest
+            http-ingest = 14268 # classic HTTP ingest
           }
         }
-      }
 
-      query = {
-        enabled = true
+        # UI ingress (unchanged)
         ingress = {
           enabled          = true
           ingressClassName = "nginx"
@@ -363,6 +326,16 @@ resource "helm_release" "jaeger" {
           }]
         }
       }
+
+      # turn OFF split components and anything else
+      query         = { enabled = false }
+      collector     = { enabled = false }
+      agent         = { enabled = false }
+      cassandra     = { enabled = false }
+      elasticsearch = { enabled = false }
+      kafka         = { enabled = false }
+      indexCleaner  = { enabled = false }
+      esRollover    = { enabled = false }
     })
   ]
 
@@ -374,6 +347,9 @@ resource "helm_release" "jaeger" {
 }
 
 ## Opentelemetry ###
+# ==============================
+# OPENTELEMETRY COLLECTOR (OTLP)
+# ==============================
 resource "helm_release" "otel_collector" {
   name             = "otel-collector"
   namespace        = "giropops-senhas"
@@ -385,23 +361,40 @@ resource "helm_release" "otel_collector" {
 
   values = [
     yamlencode({
-      mode    = "deployment"
-      image   = { repository = "otel/opentelemetry-collector-contrib" }
+      mode = "deployment"
+
+      image = {
+        repository = "otel/opentelemetry-collector-contrib"
+      }
+
       service = { type = "ClusterIP" }
 
       config = {
         receivers = {
-          otlp = { protocols = { grpc = { endpoint = "0.0.0.0:4317" }, http = { endpoint = "0.0.0.0:4318" } } }
-        }
-        processors = { batch = {} }
-        exporters = {
           otlp = {
-            endpoint = "jaeger-collector.giropops-senhas.svc.cluster.local:4317"
+            protocols = {
+              grpc = { endpoint = "0.0.0.0:4317" }
+              http = { endpoint = "0.0.0.0:4318" }
+            }
+          }
+        }
+
+        processors = { batch = {} }
+
+        exporters = {
+          # send traces to Jaeger all-in-one Service (name = "jaeger")
+          otlp = {
+            endpoint = "jaeger.giropops-senhas.svc.cluster.local:4317"
             tls      = { insecure = true }
           }
-          debug      = { verbosity = "normal" }
+
+          # optional: see what’s flowing
+          debug = { verbosity = "normal" }
+
+          # optional: collector metrics
           prometheus = { endpoint = "0.0.0.0:9464" }
         }
+
         service = {
           pipelines = {
             traces  = { receivers = ["otlp"], processors = ["batch"], exporters = ["otlp", "debug"] }
@@ -411,6 +404,7 @@ resource "helm_release" "otel_collector" {
           telemetry = { logs = { level = "info" } }
         }
       }
+
       resources = {
         requests = { cpu = "100m", memory = "256Mi" }
         limits   = { cpu = "500m", memory = "512Mi" }
@@ -425,6 +419,7 @@ resource "helm_release" "otel_collector" {
     helm_release.aws_load_balancer_controller,
   ]
 }
+
 
 
 
