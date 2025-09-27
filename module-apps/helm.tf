@@ -284,10 +284,19 @@ resource "helm_release" "jaeger" {
     yamlencode({
       fullnameOverride = "jaeger"
 
-      # Use Elasticsearch storage
-      storage = { type = "elasticsearch" }
+      # use Elasticsearch storage and have the chart provision it
+      storage = {
+        type = "elasticsearch"
+        elasticsearch = {
+          host   = "jaeger-elasticsearch-master"
+          port   = 9200
+          scheme = "http"
+        }
+      }
 
-      # Provision an Elasticsearch subchart
+      provisionDataStore = { cassandra = false, elasticsearch = true }
+
+      # Let the chart spin up a single-node ES (dev/lab)
       elasticsearch = {
         enabled  = true
         replicas = 1
@@ -301,23 +310,23 @@ resource "helm_release" "jaeger" {
         }
       }
 
-      # Jaeger index management
+      # optional maintenance jobs
       indexCleaner = {
         enabled      = true
-        numberOfDays = 3 # keep 3 days
+        numberOfDays = 3
         schedule     = "55 23 * * *"
       }
       esRollover = {
         enabled  = true
         schedule = "0 0 * * *"
-        readTTL  = "72h"
-        writeTTL = "24h"
       }
 
-      # Split components
-      allInOne = { enabled = false }
+      # split components
+      allInOne  = { enabled = false }
+      agent     = { enabled = false }
+      cassandra = { enabled = false }
+      kafka     = { enabled = false }
 
-      # Collector with OTLP enabled + ports exposed
       collector = {
         enabled = true
         options = {
@@ -336,7 +345,6 @@ resource "helm_release" "jaeger" {
         }
       }
 
-      # Query (UI) + Ingress
       query = {
         enabled = true
         ingress = {
@@ -355,12 +363,6 @@ resource "helm_release" "jaeger" {
           }]
         }
       }
-
-      # turn off things we don't use
-      agent              = { enabled = false }
-      cassandra          = { enabled = false }
-      kafka              = { enabled = false }
-      provisionDataStore = { cassandra = false, elasticsearch = true } # keep true so templates/ILM are set up
     })
   ]
 
@@ -416,7 +418,6 @@ resource "helm_release" "otel_collector" {
     })
   ]
 
-
   depends_on = [
     helm_release.jaeger,
     helm_release.ingress-nginx,
@@ -424,6 +425,7 @@ resource "helm_release" "otel_collector" {
     helm_release.aws_load_balancer_controller,
   ]
 }
+
 
 
 
