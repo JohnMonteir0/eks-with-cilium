@@ -377,9 +377,9 @@ resource "helm_release" "otel_collector" {
         processors = { batch = {} }
 
         exporters = {
-          # ✅ Send traces to the all-in-one Service
+          # Send traces to the all-in-one Service
           otlp = {
-            endpoint = "jaeger.giropops-senhas.svc.cluster.local:4317"
+            endpoint = "jaeger-collector:4317"
             tls      = { insecure = true }
           }
 
