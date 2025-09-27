@@ -286,34 +286,27 @@ resource "helm_release" "jaeger" {
       provisionDataStore = { cassandra = false, elasticsearch = false }
       storage            = { type = "memory" }
 
-      # Use split components
-      allInOne = { enabled = false }
-
-      # --- Collector (enable OTLP gRPC/HTTP listeners) ---
-      collector = {
+      # Run everything in one pod
+      allInOne = {
         enabled = true
 
-        options = {
-          "collector.otlp.enabled"        = true
-          "collector.otlp.grpc.host-port" = ":4317"
-          "collector.otlp.http.host-port" = ":4318"
-        }
+        # Expose OTLP listeners directly on the all-in-one process
+        extraArgs = [
+          "--collector.otlp.enabled=true",
+          "--collector.otlp.grpc.host-port=:4317",
+          "--collector.otlp.http.host-port=:4318",
+        ]
 
-        # Expose ports on the Service (so other pods can hit them)
         service = {
           ports = {
-            otlp-grpc = 4317
-            otlp-http = 4318
-            grpc      = 14250 # classic Jaeger gRPC ingestion
-            http      = 14268 # classic Jaeger HTTP ingestion
-            zipkin    = 9411  # optional
+            http      = 16686 # Jaeger UI
+            otlp-grpc = 4317  # OTLP gRPC ingest
+            otlp-http = 4318  # OTLP HTTP ingest
+            grpc      = 14250 # Classic Jaeger gRPC ingest (optional)
           }
         }
-      }
 
-      # --- Query (UI) + Ingress ---
-      query = {
-        enabled = true
+        # UI ingress (lives under allInOne, not query)
         ingress = {
           enabled          = true
           ingressClassName = "nginx"
@@ -331,8 +324,11 @@ resource "helm_release" "jaeger" {
         }
       }
 
-      # Off anything we don't need
-      agent         = { enabled = false }
+      # Turn off split components to avoid duplicate Services
+      query     = { enabled = false }
+      collector = { enabled = false }
+      agent     = { enabled = false }
+
       cassandra     = { enabled = false }
       elasticsearch = { enabled = false }
       kafka         = { enabled = false }
@@ -348,8 +344,7 @@ resource "helm_release" "jaeger" {
   ]
 }
 
-
-### Opentelemetry ###
+## Opentelemetry ###
 resource "helm_release" "otel_collector" {
   name             = "otel-collector"
   namespace        = "giropops-senhas"
@@ -382,13 +377,13 @@ resource "helm_release" "otel_collector" {
         processors = { batch = {} }
 
         exporters = {
-          # ✅ Send traces to Jaeger Collector (gRPC OTLP)
+          # Send traces to the all-in-one Service
           otlp = {
-            endpoint = "jaeger-collector.giropops-senhas.svc.cluster.local:4317"
+            endpoint = "jaeger.giropops-senhas.svc.cluster.local:4317"
             tls      = { insecure = true }
           }
 
-          # Expose Collector metrics to Prometheus (optional)
+          # Optional: expose Collector metrics for Prometheus
           prometheus = { endpoint = "0.0.0.0:9464" }
 
           # Useful for debugging
