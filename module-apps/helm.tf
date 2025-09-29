@@ -427,26 +427,15 @@ resource "helm_release" "loki" {
   timeout          = 600
 
   values = [yamlencode({
-    grafana = {
-      enabled = false
-    }
+    grafana = { enabled = false }
 
     loki = {
-      enabled      = true
-      auth_enabled = false
-      isDefault    = false
-      serviceMonitor = {
-        enabled = true
-      }
-
-      # single process, local storage (good for labs)
-      singleBinary = { enabled = true }
-      commonConfig = { replication_factor = 1 }
-      storage = {
-        type = "filesystem"
-      }
-
-      # default TSDB schema, filesystem
+      enabled        = true
+      auth_enabled   = false
+      serviceMonitor = { enabled = true }
+      singleBinary   = { enabled = true }
+      commonConfig   = { replication_factor = 1 }
+      storage        = { type = "filesystem" }
       schemaConfig = {
         configs = [{
           from         = "2024-01-01"
@@ -456,64 +445,50 @@ resource "helm_release" "loki" {
           index        = { prefix = "index_", period = "24h" }
         }]
       }
-
-      # ClusterIP service on :3100
-      service = {
-        type = "ClusterIP"
-        port = 3100
-      }
+      service = { type = "ClusterIP", port = 3100 }
     }
 
     promtail = {
       enabled = true
 
-      serviceMonitor = {
-        enabled = true
-        # label so kube-prometheus-stack picks it up even if it filters
-        labels = { release = "kube-prometheus-stack" }
-      }
-
-      # Send to this chart's Loki service (name == release name)
       config = {
-        server = {
-          http_listen_port = 3101
-          grpc_listen_port = 0
-        }
-
+        server    = { http_listen_port = 3101, grpc_listen_port = 0 }
+        positions = { filename = "/run/promtail/positions.yaml" }
         clients = [{
           url = "http://loki.giropops-senhas.svc.cluster.local:3100/loki/api/v1/push"
         }]
+        scrape_configs = [{
+          job_name = "kubernetes-pods"
+          pipeline_stages = [
+            { cri = {} },
+            { regex = { expression = ".*(?:trace[id|_id|Id]|otel.trace_id)=(?P<trace_id>[A-Za-z0-9]+).*" } },
+            { labels = { trace_id = "" } }
+          ]
+          kubernetes_sd_configs = [{ role = "pod" }]
+          relabel_configs = [
+            { source_labels = ["__meta_kubernetes_pod_node_name"], target_label = "node" },
+            { source_labels = ["__meta_kubernetes_namespace"], target_label = "namespace" },
+            { source_labels = ["__meta_kubernetes_pod_name"], target_label = "pod" },
+            { source_labels = ["__meta_kubernetes_pod_container_name"], target_label = "container" },
+            { source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"], target_label = "app" },
+            { source_labels = ["__meta_kubernetes_pod_label_app"], target_label = "app", regex = "(.+)", action = "replace" },
+            { action = "replace", replacement = "/var/log/pods/*$1/*.log",
+            target_label = "__path__", source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"] }
+          ]
+        }]
+      }
 
-        positions = { filename = "/var/log/positions.yaml" }
+      # <-- Give promtail a writable scratch space
+      extraVolumes      = [{ name = "run-promtail", emptyDir = {} }]
+      extraVolumeMounts = [{ name = "run-promtail", mountPath = "/run/promtail" }]
 
-        scrape_configs = [
-          # k8s pods (standard promtail job)
-          {
-            job_name = "kubernetes-pods"
-            pipeline_stages = [
-              { cri = {} },
-              # try to pull trace id out of logs (any of these keys)
-              { regex = { expression = ".*(?:trace[id|_id|Id]|otel.trace_id)=(?P<trace_id>[A-Za-z0-9]+).*" } },
-              { labels = { trace_id = "" } }
-            ]
-            kubernetes_sd_configs = [{ role = "pod" }]
-            relabel_configs = [
-              { source_labels = ["__meta_kubernetes_pod_node_name"], target_label = "node" },
-              { source_labels = ["__meta_kubernetes_namespace"], target_label = "namespace" },
-              { source_labels = ["__meta_kubernetes_pod_name"], target_label = "pod" },
-              { source_labels = ["__meta_kubernetes_pod_container_name"], target_label = "container" },
-              { source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"], target_label = "app" },
-              { source_labels = ["__meta_kubernetes_pod_label_app"], target_label = "app", regex = "(.+)", action = "replace" },
-              { action = "replace", replacement = "/var/log/pods/*$1/*.log", target_label = "__path__", source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"] }
-            ]
-          }
-        ]
+      serviceMonitor = {
+        enabled = true
+        labels  = { release = "kube-prometheus-stack" }
       }
     }
   })]
 }
-
-
 
 
 
