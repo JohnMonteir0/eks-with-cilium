@@ -451,12 +451,15 @@ resource "helm_release" "loki" {
     promtail = {
       enabled = true
 
+      # use the chart's default /run/promtail (already mounted & writable)
       config = {
         server    = { http_listen_port = 3101, grpc_listen_port = 0 }
         positions = { filename = "/run/promtail/positions.yaml" }
+
         clients = [{
           url = "http://loki.giropops-senhas.svc.cluster.local:3100/loki/api/v1/push"
         }]
+
         scrape_configs = [{
           job_name = "kubernetes-pods"
           pipeline_stages = [
@@ -472,15 +475,13 @@ resource "helm_release" "loki" {
             { source_labels = ["__meta_kubernetes_pod_container_name"], target_label = "container" },
             { source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"], target_label = "app" },
             { source_labels = ["__meta_kubernetes_pod_label_app"], target_label = "app", regex = "(.+)", action = "replace" },
-            { action = "replace", replacement = "/var/log/pods/*$1/*.log",
-            target_label = "__path__", source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"] }
+            { action       = "replace",
+              replacement  = "/var/log/pods/*$1/*.log",
+              target_label = "__path__",
+            source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"] }
           ]
         }]
       }
-
-      # <-- Give promtail a writable scratch space
-      extraVolumes      = [{ name = "run-promtail", emptyDir = {} }]
-      extraVolumeMounts = [{ name = "run-promtail", mountPath = "/run/promtail" }]
 
       serviceMonitor = {
         enabled = true
@@ -488,10 +489,10 @@ resource "helm_release" "loki" {
       }
     }
   })]
-  depends_on = [
-    helm_release.jaeger
-  ]
+
+  depends_on = [helm_release.jaeger]
 }
+
 
 
 
