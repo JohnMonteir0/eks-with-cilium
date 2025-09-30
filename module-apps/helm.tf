@@ -377,11 +377,11 @@ resource "helm_release" "otel_collector" {
 
         exporters = {
           "otlp/jaeger" = {
-            endpoint = "jaeger.giropops-senhas.svc.cluster.local:4317"
+            endpoint = "jaeger-collector:4317"
             tls      = { insecure = true }
           }
           "otlp/tempo" = {
-            endpoint = "tempo.giropops-senhas.svc.cluster.local:4317"
+            endpoint = "tempo:4317"
             tls      = { insecure = true }
           }
           prometheus = { endpoint = "0.0.0.0:9464" }
