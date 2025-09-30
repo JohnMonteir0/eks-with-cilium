@@ -376,46 +376,26 @@ resource "helm_release" "otel_collector" {
         }
 
         exporters = {
-          # ---- OTLP gRPC - Jaeger (all-in-one) ----
           "otlp/jaeger" = {
             endpoint = "jaeger.giropops-senhas.svc.cluster.local:4317"
             tls      = { insecure = true }
           }
-
-          # ---- OTLP gRPC - Tempo ----
           "otlp/tempo" = {
             endpoint = "tempo.giropops-senhas.svc.cluster.local:4317"
             tls      = { insecure = true }
           }
-
-          # Collector self-metrics for Prometheus
           prometheus = { endpoint = "0.0.0.0:9464" }
-
-          # Debug logging exporter
-          debug = { verbosity = "normal" }
+          debug      = { verbosity = "normal" }
         }
 
         service = {
           pipelines = {
-            traces = {
-              receivers  = ["otlp"]
-              processors = ["batch"]
-              exporters  = ["otlp/jaeger", "otlp/tempo", "debug"]
-            }
-            metrics = {
-              receivers  = ["otlp"]
-              processors = ["batch"]
-              exporters  = ["prometheus", "debug"]
-            }
-            logs = {
-              receivers  = ["otlp"]
-              processors = ["batch"]
-              exporters  = ["debug"]
-            }
+            traces  = { receivers = ["otlp"], processors = ["batch"], exporters = ["otlp/jaeger", "otlp/tempo", "debug"] }
+            metrics = { receivers = ["otlp"], processors = ["batch"], exporters = ["prometheus", "debug"] }
+            logs    = { receivers = ["otlp"], processors = ["batch"], exporters = ["debug"] }
           }
+          telemetry = { logs = { level = "info" } }
         }
-
-        telemetry = { logs = { level = "info" } }
       }
 
       resources = {
@@ -432,6 +412,7 @@ resource "helm_release" "otel_collector" {
     helm_release.aws_load_balancer_controller,
   ]
 }
+
 
 ## Loki Stack ###
 resource "helm_release" "loki" {
