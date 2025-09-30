@@ -248,30 +248,20 @@ resource "helm_release" "kube_prometheus_stack" {
 
           # Tempo datasource
           {
-            name      = "Tempo"
-            type      = "tempo"
-            access    = "proxy"
-            isDefault = false
-
-            url = "http://tempo.giropops-senhas.svc.cluster.local:3200"
-
+            name     = "Tempo"
+            type     = "tempo"
+            access   = "proxy"
+            url      = "http://tempo.giropops-senhas.svc.cluster.local:3200"
+            editable = true
             jsonData = {
-              httpMethod = "GET"
-              nodeGraph  = { enabled = true }
-              search     = { hide = false }
-
-              # Let Tempo build service map using the default Prometheus DS ("Prometheus")
-              serviceMap = { datasourceName = "Prometheus" }
-
-              # Enable Traces -> Logs button targeting Loki
+              nodeGraph = { enabled = true }
               tracesToLogs = {
-                datasourceName     = "Loki"
+                datasourceUid      = "Loki"
+                spanStartTimeShift = "1h"
+                spanEndTimeShift   = "1h"
                 filterByTraceID    = true
                 filterBySpanID     = false
-                mapTagNamesEnabled = true
-                spanStartTimeShift = "1m"
-                spanEndTimeShift   = "1m"
-                tags               = ["namespace", "pod", "container", "app", "job"]
+                tags               = ["job", "instance", "pod", "namespace", "container"]
               }
             }
           }
@@ -280,6 +270,5 @@ resource "helm_release" "kube_prometheus_stack" {
     })
   ]
 }
-
 
 
