@@ -356,12 +356,8 @@ resource "helm_release" "otel_collector" {
 
   values = [
     yamlencode({
-      mode = "deployment"
-
-      image = {
-        repository = "otel/opentelemetry-collector-contrib"
-      }
-
+      mode    = "deployment"
+      image   = { repository = "otel/opentelemetry-collector-contrib" }
       service = { type = "ClusterIP" }
 
       config = {
@@ -374,27 +370,49 @@ resource "helm_release" "otel_collector" {
           }
         }
 
-        processors = { batch = {} }
+        processors = {
+          batch = {}
+          # (optional hardening)
+          # memory_limiter = { check_interval = "5s", limit_percentage = 80, spike_limit_percentage = 25 }
+        }
 
         exporters = {
-          # Send traces to the all-in-one Service
-          otlp = {
+          # Jaeger 
+          otlp_jaeger = {
             endpoint = "jaeger-collector:4317"
             tls      = { insecure = true }
           }
 
-          # Optional: expose Collector metrics for Prometheus
+          # Tempo
+          otlp_tempo = {
+            endpoint = "tempo.giropops-senhas.svc.cluster.local:4317"
+            tls      = { insecure = true }
+          }
+
+          # Prom metrics for the Collector itself
           prometheus = { endpoint = "0.0.0.0:9464" }
 
-          # Useful for debugging
+          # Debug logger
           debug = { verbosity = "normal" }
         }
 
         service = {
           pipelines = {
-            traces  = { receivers = ["otlp"], processors = ["batch"], exporters = ["otlp", "debug"] }
-            metrics = { receivers = ["otlp"], processors = ["batch"], exporters = ["prometheus", "debug"] }
-            logs    = { receivers = ["otlp"], processors = ["batch"], exporters = ["debug"] }
+            traces = {
+              receivers  = ["otlp"]
+              processors = ["batch"]
+              exporters  = ["otlp_jaeger", "otlp_tempo", "debug"]
+            }
+            metrics = {
+              receivers  = ["otlp"]
+              processors = ["batch"]
+              exporters  = ["prometheus", "debug"]
+            }
+            logs = {
+              receivers  = ["otlp"]
+              processors = ["batch"]
+              exporters  = ["debug"]
+            }
           }
           telemetry = { logs = { level = "info" } }
         }
@@ -491,6 +509,55 @@ resource "helm_release" "loki" {
   })]
 
   depends_on = [helm_release.jaeger]
+}
+
+### Tempo ###
+resource "helm_release" "tempo" {
+  name             = "tempo"
+  namespace        = "giropops-senhas"
+  repository       = "https://grafana.github.io/helm-charts"
+  chart            = "tempo"
+  version          = "1.23.3"
+  create_namespace = false
+  atomic           = true
+  timeout          = 600
+
+  values = [yamlencode({
+    fullnameOverride = "tempo"
+
+    tempo = {
+      # Minimal, local storage good for labs
+      storage = {
+        trace = {
+          backend = "local"
+          local   = { path = "/var/tempo" }
+          wal     = { enabled = true }
+        }
+      }
+
+      # Expose the standard ports
+      server = { http_listen_port = 3200 }
+      receivers = {
+        otlp = { protocols = { grpc = {}, http = {} } } # :4317 and :4318
+        # (Optional) Jaeger/Zipkin ingesters:
+        # jaeger = { protocols = { grpc = {}, thrift_binary = {}, thrift_compact = {}, thrift_http = {} } }
+        # zipkin = {}
+      }
+
+      # Makes /ready and /metrics available, etc.
+      query_frontend = { max_outstanding_per_tenant = 1024 }
+    }
+
+    service = {
+      type = "ClusterIP"
+      # chart exposes named ports automatically; default OTLP ports are included
+    }
+
+    # Good to have if kube-prometheus-stack is watching ServiceMonitors
+    serviceMonitor = { enabled = true }
+  })]
+
+  depends_on = [helm_release.otel_collector]
 }
 
 

@@ -223,6 +223,7 @@ resource "helm_release" "kube_prometheus_stack" {
 
       grafana = {
         additionalDataSources = [
+          # Loki datasource
           {
             name      = "Loki"
             type      = "loki"
@@ -232,13 +233,46 @@ resource "helm_release" "kube_prometheus_stack" {
             jsonData = {
               maxLines = 1000
               timeout  = 60
+
+              # Click a detected trace_id in logs -> jump to Tempo Explore
               derivedFields = [
                 {
                   name         = "trace_id"
                   matcherRegex = "trace_id=(\\w+)"
-                  url          = "$${__url}/explore?orgId=1&left=[\"now-15m\",\"now\",\"tempo\",{\"query\":\"$${__value.raw}\"}]"
+                  # NOTE: double-$ to escape for Terraform so Grafana sees ${__...}
+                  url = "$${__url}/explore?orgId=1&left=[\"now-15m\",\"now\",\"tempo\",{\"query\":\"$${__value.raw}\"}]"
                 }
               ]
+            }
+          },
+
+          # Tempo datasource
+          {
+            name      = "Tempo"
+            type      = "tempo"
+            access    = "proxy"
+            isDefault = false
+
+            url = "http://tempo.giropops-senhas.svc.cluster.local:3200"
+
+            jsonData = {
+              httpMethod = "GET"
+              nodeGraph  = { enabled = true }
+              search     = { hide = false }
+
+              # Let Tempo build service map using the default Prometheus DS ("Prometheus")
+              serviceMap = { datasourceName = "Prometheus" }
+
+              # Enable Traces -> Logs button targeting Loki
+              tracesToLogs = {
+                datasourceName     = "Loki"
+                filterByTraceID    = true
+                filterBySpanID     = false
+                mapTagNamesEnabled = true
+                spanStartTimeShift = "1m"
+                spanEndTimeShift   = "1m"
+                tags               = ["namespace", "pod", "container", "app", "job"]
+              }
             }
           }
         ]
@@ -246,5 +280,6 @@ resource "helm_release" "kube_prometheus_stack" {
     })
   ]
 }
+
 
 
