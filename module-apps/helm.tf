@@ -423,7 +423,7 @@ resource "helm_release" "loki" {
   version          = "2.10.2"
   create_namespace = false
   atomic           = true
-  timeout          = 600
+  timeout          = 300
 
   values = [yamlencode({
     grafana = { enabled = false }
@@ -501,45 +501,70 @@ resource "helm_release" "tempo" {
   version          = "1.23.3"
   create_namespace = false
   atomic           = true
-  timeout          = 600
+  timeout          = 300
 
   values = [yamlencode({
     fullnameOverride = "tempo"
 
     tempo = {
-      # Minimal, local storage good for labs
-      storage = {
-        trace = {
-          backend = "local"
-          local   = { path = "/var/tempo" }
-          wal     = { enabled = true }
+      server = {
+        http_listen_port = 3200
+        log_level        = "info"
+      }
+
+      # Receivers MUST be under distributor.receivers
+      distributor = {
+        receivers = {
+          otlp = { protocols = { grpc = {}, http = {} } } # exposes 4317/4318
+          # (optional)
+          # jaeger = { protocols = { grpc = {}, thrift_binary = {}, thrift_compact = {}, thrift_http = {} } }
+          # zipkin = {}
         }
       }
 
-      # Expose the standard ports
-      server = { http_listen_port = 3200 }
-      receivers = {
-        otlp = { protocols = { grpc = {}, http = {} } } # :4317 and :4318
-        # (Optional) Jaeger/Zipkin ingesters:
-        # jaeger = { protocols = { grpc = {}, thrift_binary = {}, thrift_compact = {}, thrift_http = {} } }
-        # zipkin = {}
+      ingester = {
+        max_block_duration = "5m"
+        wal = {
+          dir = "/var/tempo/wal"
+        }
       }
 
-      # Makes /ready and /metrics available, etc.
+      compactor = { compaction = { block_retention = "24h" } }
+
+      storage = {
+        trace = {
+          backend = "local"
+          local   = { path = "/var/tempo/traces" }
+        }
+      }
+
       query_frontend = { max_outstanding_per_tenant = 1024 }
     }
 
-    service = {
-      type = "ClusterIP"
-      # chart exposes named ports automatically; default OTLP ports are included
+    # Single-pod (lab) storage paths
+    singleBinary = {
+      enabled     = true
+      persistence = { enabled = false }
+      extraVolumes = [
+        { name = "tempo-wal", emptyDir = {} },
+        { name = "tempo-data", emptyDir = {} }
+      ]
+      extraVolumeMounts = [
+        { name = "tempo-wal", mountPath = "/var/tempo/wal" },
+        { name = "tempo-data", mountPath = "/var/tempo/traces" }
+      ]
     }
 
-    # Good to have if kube-prometheus-stack is watching ServiceMonitors
+    # Keep the simple ClusterIP service; chart adds OTLP ports automatically
+    service = { type = "ClusterIP" }
+
+    # Optional: let kube-prometheus-stack discover Tempo metrics
     serviceMonitor = { enabled = true }
   })]
 
   depends_on = [helm_release.otel_collector]
 }
+
 
 
 
