@@ -236,7 +236,7 @@ resource "helm_release" "kube_prometheus_stack" {
                 {
                   name         = "trace_id"
                   matcherRegex = "trace_id=(\\w+)"
-                  url          = "${__url}/explore?orgId=1&left=[\"now-15m\",\"now\",\"tempo\",{\"query\":\"$${__value.raw}\"}]"
+                  url          = "$${__url}/explore?orgId=1&left=[\"now-15m\",\"now\",\"tempo\",{\"query\":\"$${__value.raw}\"}]"
                 }
               ]
             }
