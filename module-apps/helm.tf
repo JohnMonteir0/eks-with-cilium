@@ -372,27 +372,26 @@ resource "helm_release" "otel_collector" {
 
         processors = {
           batch = {}
-          # (optional hardening)
           # memory_limiter = { check_interval = "5s", limit_percentage = 80, spike_limit_percentage = 25 }
         }
 
         exporters = {
-          # Jaeger 
-          otlp_jaeger = {
-            endpoint = "jaeger-collector:4317"
+          # ---- OTLP gRPC - Jaeger (all-in-one) ----
+          "otlp/jaeger" = {
+            endpoint = "jaeger.giropops-senhas.svc.cluster.local:4317"
             tls      = { insecure = true }
           }
 
-          # Tempo
-          otlp_tempo = {
+          # ---- OTLP gRPC - Tempo ----
+          "otlp/tempo" = {
             endpoint = "tempo.giropops-senhas.svc.cluster.local:4317"
             tls      = { insecure = true }
           }
 
-          # Prom metrics for the Collector itself
+          # Collector self-metrics for Prometheus
           prometheus = { endpoint = "0.0.0.0:9464" }
 
-          # Debug logger
+          # Debug logging exporter
           debug = { verbosity = "normal" }
         }
 
@@ -401,7 +400,7 @@ resource "helm_release" "otel_collector" {
             traces = {
               receivers  = ["otlp"]
               processors = ["batch"]
-              exporters  = ["otlp_jaeger", "otlp_tempo", "debug"]
+              exporters  = ["otlp/jaeger", "otlp/tempo", "debug"]
             }
             metrics = {
               receivers  = ["otlp"]
@@ -414,8 +413,9 @@ resource "helm_release" "otel_collector" {
               exporters  = ["debug"]
             }
           }
-          telemetry = { logs = { level = "info" } }
         }
+
+        telemetry = { logs = { level = "info" } }
       }
 
       resources = {
