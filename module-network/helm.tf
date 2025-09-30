@@ -208,7 +208,6 @@ resource "helm_release" "kube_prometheus_stack" {
   atomic           = true
   timeout          = 900
 
-  # helm_release.kube_prometheus_stack
   values = [
     yamlencode({
       prometheus = {
@@ -221,6 +220,31 @@ resource "helm_release" "kube_prometheus_stack" {
           podMonitorSelectorNilUsesHelmValues     = false
         }
       }
+
+      grafana = {
+        additionalDataSources = [
+          {
+            name      = "Loki"
+            type      = "loki"
+            access    = "proxy"
+            url       = "http://loki.giropops-senhas.svc.cluster.local:3100"
+            isDefault = false
+            jsonData = {
+              maxLines = 1000
+              timeout  = 60
+              derivedFields = [
+                {
+                  name         = "trace_id"
+                  matcherRegex = "trace_id=(\\w+)"
+                  url          = "${__url}/explore?orgId=1&left=[\"now-15m\",\"now\",\"tempo\",{\"query\":\"$${__value.raw}\"}]"
+                }
+              ]
+            }
+          }
+        ]
+      }
     })
   ]
 }
+
+
