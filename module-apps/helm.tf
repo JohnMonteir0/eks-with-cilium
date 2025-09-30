@@ -501,64 +501,38 @@ resource "helm_release" "tempo" {
   version          = "1.23.3"
   create_namespace = false
   atomic           = true
-  timeout          = 300
+  timeout          = 600
 
   values = [yamlencode({
     fullnameOverride = "tempo"
 
     tempo = {
-      server = {
-        http_listen_port = 3200
-        log_level        = "info"
-      }
+      config = <<-EOT
+        server:
+          http_listen_port: 3200
 
-      # Receivers MUST be under distributor.receivers
-      distributor = {
-        receivers = {
-          otlp = { protocols = { grpc = {}, http = {} } } # exposes 4317/4318
-          # (optional)
-          # jaeger = { protocols = { grpc = {}, thrift_binary = {}, thrift_compact = {}, thrift_http = {} } }
-          # zipkin = {}
-        }
-      }
+        distributor:
+          receivers:
+            otlp:
+              protocols:
+                http: {}   # :4318
+                grpc: {}   # :4317
 
-      ingester = {
-        max_block_duration = "5m"
-        wal = {
-          dir = "/var/tempo/wal"
-        }
-      }
+        # Simple local storage good for labs. No WAL settings needed.
+        storage:
+          trace:
+            backend: local
+            local:
+              path: /var/tempo
 
-      compactor = { compaction = { block_retention = "24h" } }
-
-      storage = {
-        trace = {
-          backend = "local"
-          local   = { path = "/var/tempo/traces" }
-        }
-      }
-
-      query_frontend = { max_outstanding_per_tenant = 1024 }
+      EOT
     }
 
-    # Single-pod (lab) storage paths
-    singleBinary = {
-      enabled     = true
-      persistence = { enabled = false }
-      extraVolumes = [
-        { name = "tempo-wal", emptyDir = {} },
-        { name = "tempo-data", emptyDir = {} }
-      ]
-      extraVolumeMounts = [
-        { name = "tempo-wal", mountPath = "/var/tempo/wal" },
-        { name = "tempo-data", mountPath = "/var/tempo/traces" }
-      ]
+    service = {
+      type = "ClusterIP"
     }
 
-    # Keep the simple ClusterIP service; chart adds OTLP ports automatically
-    service = { type = "ClusterIP" }
-
-    # Optional: let kube-prometheus-stack discover Tempo metrics
+    # Let kube-prometheus-stack auto-discover Tempo metrics
     serviceMonitor = { enabled = true }
   })]
 
