@@ -1,6 +1,6 @@
 provider "aws" {
   # use var.region if you don’t actually have local.region defined
-  region = local.region
+  region = var.aws_region
 }
 
 terraform {
@@ -23,13 +23,7 @@ terraform {
     }
   }
 
-  backend "s3" {
-    bucket         = "terraform-backend-statebucket-ccjs7lg0z5vo"
-    key            = "terraform.tfstate"
-    region         = "us-east-1"
-    dynamodb_table = "terraform-backend-LockTable-DSKQJNNJY06J"
-    encrypt        = true
-  }
+  backend "s3" {}
 }
 
 provider "helm" {

@@ -18,3 +18,7 @@ data "aws_subnets" "public" {
     values = ["shared"]
   }
 }
+
+data "aws_iam_openid_connect_provider" "cluster" {
+  url = var.cluster_oidc_issuer_url
+}

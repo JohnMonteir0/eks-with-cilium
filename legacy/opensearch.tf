@@ -1,5 +1,5 @@
 # module "opensearch" {
-#   source = "terraform-aws-modules/opensearch/aws"
+#   source  = "terraform-aws-modules/opensearch/aws"
 #   version = "~> 1.7.0"
 
 
@@ -115,7 +115,7 @@
 #       conditions = [{
 #         test     = "IpAddress"
 #         variable = "aws:SourceIp"
-#         values   = ["127.0.0.1/32","10.0.0.0/16","187.95.162.107/32"]
+#         values   = ["127.0.0.1/32", "10.0.0.0/16", "187.95.162.107/32"]
 #       }]
 #     }
 #   ]
@@ -127,6 +127,6 @@
 #   }
 # }
 
-# resource "aws_iam_service_linked_role" "opensearch" { 
-#     aws_service_name = "opensearchservice.amazonaws.com" 
+# resource "aws_iam_service_linked_role" "opensearch" {
+#   aws_service_name = "opensearchservice.amazonaws.com"
 # }
