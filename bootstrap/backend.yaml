@@ -1,0 +1,123 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Terraform backend (S3 + DynamoDB) WITHOUT KMS. Auto-unique names with env/prefix.
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [dev, stg, prod]
+    Description: Short environment code (dev|stg|prod).
+  NamePrefix:
+    Type: String
+    Default: terraform-backend
+    AllowedPattern: '^[a-z0-9-]+$'
+    Description: Lowercase, hyphen-only prefix used in names (e.g., terraform-backend).
+  BucketName:
+    Type: String
+    Default: ""
+    Description: Optional explicit S3 bucket name (must be globally unique). Leave empty for auto.
+  DynamoDBTableName:
+    Type: String
+    Default: ""
+    Description: Optional explicit DynamoDB table name. Leave empty for auto.
+
+Conditions:
+  UseCustomBucketName: !Not [!Equals [!Ref BucketName, ""]]
+  UseCustomTableName:  !Not [!Equals [!Ref DynamoDBTableName, ""]]
+
+Resources:
+  StateBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !If
+        - UseCustomBucketName
+        - !Ref BucketName
+        - !Sub
+          - "${Env}-${Prefix}-tfstate-${Suffix}"
+          - Env:    !Ref Environment
+            Prefix: !Ref NamePrefix
+            Suffix: !Select
+              - 0
+              - !Split
+                - '-'
+                - !Select
+                  - 2
+                  - !Split
+                    - '/'
+                    - !Ref "AWS::StackId"
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerPreferred
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256  # SSE-S3 (no KMS)
+      LifecycleConfiguration:
+        Rules:
+          - Id: AbortIncompleteMultipart
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+      Tags:
+        - Key: Project
+          Value: Terraform
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Environment
+          Value: !Ref Environment
+
+  LockTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !If
+        - UseCustomTableName
+        - !Ref DynamoDBTableName
+        - !Sub
+          - "${Env}-${Prefix}-locks-${Suffix}"
+          - Env:    !Ref Environment
+            Prefix: !Ref NamePrefix
+            Suffix: !Select
+              - 0
+              - !Split
+                - '-'
+                - !Select
+                  - 2
+                  - !Split
+                    - '/'
+                    - !Ref "AWS::StackId"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: LockID
+          AttributeType: S
+      KeySchema:
+        - AttributeName: LockID
+          KeyType: HASH
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Project
+          Value: Terraform
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Environment
+          Value: !Ref Environment
+
+Outputs:
+  S3Bucket:
+    Value: !Ref StateBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-S3Bucket"
+  DynamoDBTable:
+    Value: !Ref LockTable
+    Export:
+      Name: !Sub "${AWS::StackName}-DynamoDBTable"

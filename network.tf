@@ -14,17 +14,18 @@ module "vpc" {
   public_subnets  = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 8, k + 48)]
   intra_subnets   = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 8, k + 52)]
 
-  enable_nat_gateway = true
-  single_nat_gateway = true
+  enable_nat_gateway     = var.enable_nat_gateway
+  single_nat_gateway     = var.single_nat_gateway
+  one_nat_gateway_per_az = var.one_nat_gateway_per_az
 
   public_subnet_tags = {
-    "kubernetes.io/role/elb"                    = "1"
-    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
+    "kubernetes.io/role/elb"              = "1"
+    "kubernetes.io/cluster/${local.name}" = "shared"
   }
 
   private_subnet_tags = {
-    "kubernetes.io/role/internal-elb"           = "1"
-    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
+    "kubernetes.io/role/internal-elb"     = "1"
+    "kubernetes.io/cluster/${local.name}" = "shared"
     # Tags subnets for Karpenter auto-discovery
     "karpenter.sh/discovery" = local.name
   }
@@ -57,9 +58,9 @@ resource "aws_subnet" "pods" {
   tags = merge(
     local.tags,
     {
-      Name                                        = "cilium-pod-${each.key}"
-      "kubernetes.io/cluster/${var.cluster_name}" = "shared"
-      "cilium-pod-subnet"                         = "true"
+      Name                                  = "cilium-pod-${each.key}"
+      "kubernetes.io/cluster/${local.name}" = "shared"
+      "cilium-pod-subnet"                   = "true"
     }
   )
 }
@@ -71,5 +72,5 @@ resource "aws_route_table_association" "pods" {
   for_each = local.az_index_map
 
   subnet_id      = aws_subnet.pods[each.key].id
-  route_table_id = module.vpc.private_route_table_ids[0]
+  route_table_id = length(module.vpc.private_route_table_ids) == 1 ? module.vpc.private_route_table_ids[0] : module.vpc.private_route_table_ids[each.value]
 }

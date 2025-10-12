@@ -7,11 +7,11 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
     nginx.ingress.kubernetes.io/backend-protocol: HTTP
-    external-dns.alpha.kubernetes.io/hostname: grafana.039357025931.realhandsonlabs.net
+    external-dns.alpha.kubernetes.io/hostname: grafana.370445361629.realhandsonlabs.net
 spec:
   ingressClassName: nginx
   rules:
-  - host: grafana.039357025931.realhandsonlabs.net
+  - host: grafana.370445361629.realhandsonlabs.net
     http:
       paths:
       - path: /
@@ -31,11 +31,11 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
     nginx.ingress.kubernetes.io/backend-protocol: HTTP
-    external-dns.alpha.kubernetes.io/hostname: prometheus.039357025931.realhandsonlabs.net
+    external-dns.alpha.kubernetes.io/hostname: prometheus.370445361629.realhandsonlabs.net
 spec:
   ingressClassName: nginx
   rules:
-  - host: prometheus.039357025931.realhandsonlabs.net
+  - host: prometheus.370445361629.realhandsonlabs.net
     http:
       paths:
       - path: /
