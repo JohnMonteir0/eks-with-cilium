@@ -1,7 +1,6 @@
 variable "cluster_name" {
   description = "Name of the EKS cluster"
   type        = string
-  default     = "cilium"
 }
 
 variable "vpc_id" {
@@ -32,4 +31,12 @@ variable "queue_name" {
 variable "public_subnet_ids_csv" {
   type    = string
   default = ""
+}
+
+variable "tags" {
+  type = map(string)
+}
+variable "name_prefix" {
+  type        = string
+  description = "Prefix for IAM names and tags (e.g., platform-stg)"
 }
