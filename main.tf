@@ -7,24 +7,23 @@ module "eks_bottlerocket" {
   create_cloudwatch_log_group              = false
   cluster_endpoint_public_access           = true
   enable_cluster_creator_admin_permissions = true
-
-  # disable all addons we will add them later.
-  bootstrap_self_managed_addons = false
+  bootstrap_self_managed_addons            = false
 
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
 
   authentication_mode = "API_AND_CONFIG_MAP"
 
+  # --- bootstrap/system node group ---
   self_managed_node_groups = {
     karpenter = {
+      name          = format("karpenter-%s", var.environment)
       ami_type      = "BOTTLEROCKET_x86_64"
-      instance_type = "t3.medium"
+      instance_type = var.bootstrap_node.instance_type
 
-      min_size     = 3
-      max_size     = 6
-      desired_size = 4
-
+      min_size     = var.bootstrap_node.min
+      max_size     = var.bootstrap_node.max
+      desired_size = var.bootstrap_node.desired
 
       ignore_failed_scaling_activities = true
 
@@ -35,21 +34,23 @@ module "eks_bottlerocket" {
       enabled = true
       [settings.kernel]
       lockdown = "integrity"
-    EOT
+      EOT
 
       labels = {
         "karpenter.sh/controller" = "true"
+        "workload"                = "system"
       }
 
       taints = [{
         key    = "node.cilium.io/agent-not-ready"
         value  = "true"
-        effect = "NO_EXECUTE"
+        effect = "NoExecute"
       }]
     }
   }
+
+  # --- security group rules (key names unique) ---
   node_security_group_additional_rules = {
-    # allow all from VPC (simple + effective for tests)
     allow_all_from_vpc = {
       description = "Allow all traffic from VPC CIDR"
       type        = "ingress"
@@ -59,7 +60,6 @@ module "eks_bottlerocket" {
       cidr_blocks = [module.vpc.vpc_cidr_block]
     }
 
-    # optional: be explicit for ICMP if you prefer tighter rules
     allow_icmp_from_vpc = {
       description = "Allow ICMP from VPC CIDR"
       type        = "ingress"
@@ -69,7 +69,7 @@ module "eks_bottlerocket" {
       cidr_blocks = [module.vpc.vpc_cidr_block]
     }
 
-    allow_all_from_vpc = {
+    allow_all_from_pod_cidr = {
       description = "Allow all traffic from pod CIDR"
       type        = "ingress"
       protocol    = "-1"
@@ -80,12 +80,8 @@ module "eks_bottlerocket" {
   }
 
   node_security_group_tags = merge(local.tags, {
-    # NOTE - if creating multiple security groups with this module, only tag the
-    # security group that Karpenter should utilize with the following tag
-    # (i.e. - at most, only one security group should have this tag in your account)
     "karpenter.sh/discovery" = local.name
   })
 
   tags = local.tags
-
 }

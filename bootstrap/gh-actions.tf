@@ -12,22 +12,26 @@ resource "aws_iam_role" "gh_actions_role" {
   name = "gh-actions-role"
 
   assume_role_policy = jsonencode({
-    "Version" : "2012-10-17",
-    "Statement" : [
-      {
-        "Effect" : "Allow",
-        "Principal" : {
-          "Federated" : "${aws_iam_openid_connect_provider.gh_actions_oidc.arn}"
+    Version = "2012-10-17",
+    Statement = [{
+      Effect = "Allow",
+      Principal = {
+        Federated = aws_iam_openid_connect_provider.gh_actions_oidc.arn
+      },
+      Action = "sts:AssumeRoleWithWebIdentity",
+      Condition = {
+        StringEquals = {
+          "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
         },
-        "Action" : "sts:AssumeRoleWithWebIdentity",
-        "Condition" : {
-          "StringEquals" : {
-            "token.actions.githubusercontent.com:sub" : "repo:JohnMonteir0/eks-with-cilium:ref:refs/heads/main"
-            "token.actions.githubusercontent.com:aud" : "sts.amazonaws.com"
-          }
+        StringLike = {
+          "token.actions.githubusercontent.com:sub" = [
+            "repo:JohnMonteir0/eks-with-cilium:ref:refs/heads/main",
+            "repo:JohnMonteir0/eks-with-cilium:ref:refs/heads/staging",
+            "repo:JohnMonteir0/eks-with-cilium:ref:refs/heads/development",
+          ]
         }
       }
-    ]
+    }]
   })
 }
 

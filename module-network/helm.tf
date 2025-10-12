@@ -93,7 +93,7 @@ resource "helm_release" "cilium" {
   }
   set {
     name  = "hubble.ui.ingress.hosts[0]"
-    value = "hubble.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
+    value = "hubble-${var.environment}.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
   }
   set {
     name  = "hubble.ui.ingress.paths[0].path"
@@ -194,81 +194,6 @@ resource "helm_release" "tetragon" {
     })
   ]
   depends_on = [helm_release.cilium]
-}
-
-
-### Kube Prometheus ###
-resource "helm_release" "kube_prometheus_stack" {
-  name             = "kube-prometheus-stack"
-  repository       = "https://prometheus-community.github.io/helm-charts"
-  chart            = "kube-prometheus-stack"
-  version          = "77.9.1"
-  namespace        = "monitoring"
-  create_namespace = true
-  atomic           = true
-  timeout          = 900
-
-  values = [
-    yamlencode({
-      prometheus = {
-        prometheusSpec = {
-          serviceMonitorSelector                  = {}
-          serviceMonitorNamespaceSelector         = {}
-          podMonitorSelector                      = {}
-          podMonitorNamespaceSelector             = {}
-          serviceMonitorSelectorNilUsesHelmValues = false
-          podMonitorSelectorNilUsesHelmValues     = false
-        }
-      }
-
-      grafana = {
-        additionalDataSources = [
-          # Loki datasource
-          {
-            name      = "Loki"
-            type      = "loki"
-            access    = "proxy"
-            url       = "http://loki.giropops-senhas.svc.cluster.local:3100"
-            isDefault = false
-            jsonData = {
-              maxLines = 1000
-              timeout  = 60
-
-              # Click a detected trace_id in logs -> jump to Tempo Explore
-              derivedFields = [
-                {
-                  name         = "trace_id"
-                  matcherRegex = "trace_id=(\\w+)"
-                  # NOTE: double-$ to escape for Terraform so Grafana sees ${__...}
-                  url = "$${__url}/explore?orgId=1&left=[\"now-15m\",\"now\",\"tempo\",{\"query\":\"$${__value.raw}\"}]"
-                }
-              ]
-            }
-          },
-
-          # Tempo datasource
-          {
-            name     = "Tempo"
-            type     = "tempo"
-            access   = "proxy"
-            url      = "http://tempo.giropops-senhas.svc.cluster.local:3200"
-            editable = true
-            jsonData = {
-              nodeGraph = { enabled = true }
-              tracesToLogs = {
-                datasourceUid      = "Loki"
-                spanStartTimeShift = "1h"
-                spanEndTimeShift   = "1h"
-                filterByTraceID    = true
-                filterBySpanID     = false
-                tags               = ["job", "instance", "pod", "namespace", "container"]
-              }
-            }
-          }
-        ]
-      }
-    })
-  ]
 }
 
 
