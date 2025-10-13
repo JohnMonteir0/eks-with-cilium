@@ -9,34 +9,6 @@ module "network" {
   depends_on = [module.eks_bottlerocket]
 }
 
-# Pause so Cilium comes up
-resource "time_sleep" "after_cilium" {
-  depends_on      = [module.network]
-  create_duration = "90s"
-}
-resource "aws_eks_addon" "coredns" {
-  cluster_name                = module.eks_bottlerocket.cluster_name
-  addon_name                  = "coredns"
-  addon_version               = "v1.12.3-eksbuild.1"
-  tags                        = local.tags
-  resolve_conflicts_on_create = "OVERWRITE"
-  resolve_conflicts_on_update = "OVERWRITE"
-
-  configuration_values = jsonencode({
-    tolerations = [
-      { key = "node.kubernetes.io/not-ready", operator = "Exists" },
-      { key = "node.cilium.io/agent-not-ready", operator = "Exists" }
-    ]
-  })
-  depends_on = [
-    time_sleep.after_cilium
-  ]
-}
-
-resource "terraform_data" "coredns_ready" {
-  depends_on = [aws_eks_addon.coredns]
-  input      = "ready"
-}
 module "helm" {
   source                  = "./module-apps"
   environment             = var.environment
