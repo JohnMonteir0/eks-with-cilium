@@ -9,6 +9,11 @@ module "network" {
   depends_on = [module.eks_bottlerocket]
 }
 
+# Pause so Cilium comes up
+resource "time_sleep" "after_cilium" {
+  depends_on      = [helm_release.cilium]
+  create_duration = "90s"
+}
 resource "aws_eks_addon" "coredns" {
   cluster_name                = module.eks_bottlerocket.cluster_name
   addon_name                  = "coredns"
@@ -23,6 +28,9 @@ resource "aws_eks_addon" "coredns" {
       { key = "node.cilium.io/agent-not-ready", operator = "Exists" }
     ]
   })
+  depends_on = [
+    time_sleep.after_cilium
+  ]
 }
 
 resource "terraform_data" "coredns_ready" {
