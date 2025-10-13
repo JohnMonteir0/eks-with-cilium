@@ -1,11 +1,15 @@
+#############################################
+# AWS Load Balancer Controller
+#############################################
 resource "helm_release" "aws_load_balancer_controller" {
+  for_each   = var.addons.alb ? local.one : local.none
   name       = "aws-load-balancer-controller"
   repository = "https://aws.github.io/eks-charts"
   chart      = "aws-load-balancer-controller"
   namespace  = "kube-system"
+  atomic     = true
   wait       = true
   timeout    = 900
-  atomic     = true
 
   set {
     name  = "clusterName"
@@ -34,16 +38,19 @@ resource "helm_release" "aws_load_balancer_controller" {
 
   set {
     name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
-    value = aws_iam_role.eks_load_balancer_controller.arn
+    value = aws_iam_role.eks_load_balancer_controller["this"].arn
   }
 
   depends_on = [
-    aws_iam_role_policy_attachment.attach_load_balancer_policy
+    aws_iam_role_policy_attachment.attach_load_balancer_policy,
   ]
 }
 
-### External DNS ###
+#############################################
+# External DNS
+#############################################
 resource "helm_release" "external_dns" {
+  for_each   = var.addons.external_dns ? local.one : local.none
   name       = "external-dns"
   repository = "https://kubernetes-sigs.github.io/external-dns"
   chart      = "external-dns"
@@ -66,14 +73,17 @@ resource "helm_release" "external_dns" {
   }
 }
 
-### Ingress NGINX Controller ###
-resource "helm_release" "ingress-nginx" {
+#############################################
+# Ingress NGINX
+#############################################
+resource "helm_release" "ingress_nginx" {
+  for_each         = var.addons.ingress_nginx ? local.one : local.none
   name             = "ingress-nginx"
   repository       = "https://kubernetes.github.io/ingress-nginx"
   chart            = "ingress-nginx"
   version          = "4.13.2"
-  create_namespace = true
   namespace        = "ingress-nginx"
+  create_namespace = true
   replace          = true
   atomic           = true
 
@@ -86,18 +96,22 @@ resource "helm_release" "ingress-nginx" {
       }
     })
   ]
+
   depends_on = [
     helm_release.aws_load_balancer_controller
   ]
 }
 
-### EBS CSI Driver Install ###
+#############################################
+# EBS CSI Driver
+#############################################
 resource "helm_release" "ebs_csi_driver" {
+  for_each   = var.addons.ebs_csi ? local.one : local.none
   name       = "aws-ebs-csi-driver"
   repository = "https://kubernetes-sigs.github.io/aws-ebs-csi-driver"
   chart      = "aws-ebs-csi-driver"
-  namespace  = "kube-system"
   version    = "2.30.0"
+  namespace  = "kube-system"
 
   values = [yamlencode({
     controller = {
@@ -109,64 +123,36 @@ resource "helm_release" "ebs_csi_driver" {
     enableVolumeScheduling = true
     enableVolumeResizing   = true
     enableVolumeSnapshot   = true
-
     storageClasses = [{
-      name = "ebs-csi"
-      annotations = {
-        "storageclass.kubernetes.io/is-default-class" = "true"
-      }
+      name                 = "ebs-csi"
+      annotations          = { "storageclass.kubernetes.io/is-default-class" = "true" }
       volumeBindingMode    = "WaitForFirstConsumer"
       reclaimPolicy        = "Delete"
       allowVolumeExpansion = true
-      parameters = {
-        encrypted = "true"
-        type      = "gp3"
-        fsType    = "ext4"
-      }
+      parameters           = { encrypted = "true", type = "gp3", fsType = "ext4" }
     }]
   })]
 
-  depends_on = [aws_iam_role_policy_attachment.attach_ebs_csi_policy]
+  depends_on = [
+    aws_iam_role_policy_attachment.attach_ebs_csi_policy,
+  ]
 }
 
-### Karpenter ###
-resource "helm_release" "karpenter" {
-  namespace  = "kube-system"
-  name       = "karpenter"
-  repository = "oci://public.ecr.aws/karpenter"
-  chart      = "karpenter"
-  version    = "1.1.6"
-  atomic     = true
-  timeout    = 900
-
-  set {
-    name  = "settings.clusterName"
-    value = var.cluster_name
-  }
-
-  set {
-    name  = "settings.clusterEndpoint"
-    value = var.cluster_endpoint
-  }
-
-  set {
-    name  = "settings.interruptionQueue"
-    value = var.queue_name
-  }
-}
-
-### Cert Manager ###
+#############################################
+# Cert-Manager
+#############################################
 resource "helm_release" "cert_manager" {
+  for_each         = var.addons.cert_manager ? local.one : local.none
   name             = "cert-manager"
-  namespace        = "cert-manager"
   repository       = "https://charts.jetstack.io"
   chart            = "cert-manager"
   version          = "v1.18.2"
+  namespace        = "cert-manager"
   create_namespace = true
-  timeout          = 900
   wait             = true
   replace          = true
   atomic           = true
+  timeout          = 900
 
   set {
     name  = "installCRDs"
@@ -187,14 +173,18 @@ resource "helm_release" "cert_manager" {
     name  = "replicaCount"
     value = "2"
   }
+
   depends_on = [
     helm_release.aws_load_balancer_controller,
-    helm_release.ingress-nginx
+    helm_release.ingress_nginx
   ]
 }
 
-### Kube Prometheus ###
+#############################################
+# Kube-Prometheus-Stack
+#############################################
 resource "helm_release" "kube_prometheus_stack" {
+  for_each         = var.addons.kube_prometheus_stack ? local.one : local.none
   name             = "kube-prometheus-stack"
   repository       = "https://prometheus-community.github.io/helm-charts"
   chart            = "kube-prometheus-stack"
@@ -218,347 +208,284 @@ resource "helm_release" "kube_prometheus_stack" {
       }
     })
   ]
+}
+
+#############################################
+# Argocd
+#############################################
+resource "helm_release" "argocd" {
+  for_each         = var.addons.argocd ? local.one : local.none
+  name             = "argocd"
+  repository       = "https://argoproj.github.io/argo-helm"
+  chart            = "argo-cd"
+  version          = "5.51.6"
+  namespace        = "argocd"
+  create_namespace = true
+  wait             = true
+  timeout          = 900
+
+  values = [
+    yamlencode({
+      global = {
+        domain = "argocd-${var.environment}.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
+      }
+      configs = { params = { "server.insecure" = true } }
+      server = {
+        ingress = {
+          enabled          = true
+          ingressClassName = "nginx"
+          annotations = {
+            "nginx.ingress.kubernetes.io/force-ssl-redirect" = "false"
+            "nginx.ingress.kubernetes.io/backend-protocol"   = "HTTP"
+            "external-dns.alpha.kubernetes.io/hostname"      = "argocd-${var.environment}.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
+            "cert-manager.io/cluster-issuer"                 = "letsencrypt-staging"
+          }
+          tls = [{
+            hosts      = ["argocd-${var.environment}.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"]
+            secretName = "letsencrypt-staging"
+          }]
+        }
+      }
+    })
+  ]
+
   depends_on = [
+
     helm_release.aws_load_balancer_controller,
-    helm_release.ingress-nginx
+    helm_release.ingress_nginx,
+    helm_release.cert_manager
   ]
 }
 
-# ### Argocd ###
-# resource "helm_release" "argocd" {
-#   name             = "argocd"
-#   namespace        = "argocd"
-#   repository       = "https://argoproj.github.io/argo-helm"
-#   chart            = "argo-cd"
-#   version          = "5.51.6"
-#   create_namespace = true
-#   timeout          = 900
-#   wait             = true
+#############################################
+# Jaeger
+#############################################
+resource "helm_release" "jaeger" {
+  for_each         = var.addons.jaeger ? local.one : local.none
+  name             = "jaeger"
+  repository       = "https://jaegertracing.github.io/helm-charts"
+  chart            = "jaeger"
+  version          = "3.4.1"
+  namespace        = "monitoring"
+  create_namespace = true
+  atomic           = true
 
-#   values = [
-#     yamlencode({
-#       global = {
-#         domain = "argocd.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
-#       }
+  values = [
+    yamlencode({
+      fullnameOverride   = "jaeger"
+      provisionDataStore = { cassandra = false, elasticsearch = false }
+      storage            = { type = "memory" }
+      allInOne = {
+        enabled = true
+        extraArgs = [
+          "--collector.otlp.enabled=true",
+          "--collector.otlp.grpc.host-port=:4317",
+          "--collector.otlp.http.host-port=:4318",
+        ]
+        service = {
+          ports = {
+            http      = 16686
+            otlp-grpc = 4317
+            otlp-http = 4318
+            grpc      = 14250
+          }
+        }
+        ingress = {
+          enabled          = true
+          ingressClassName = "nginx"
+          annotations = {
+            "nginx.ingress.kubernetes.io/force-ssl-redirect" = "false"
+            "nginx.ingress.kubernetes.io/backend-protocol"   = "HTTP"
+            "external-dns.alpha.kubernetes.io/hostname"      = "jaeger-${var.environment}.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
+            "cert-manager.io/cluster-issuer"                 = "letsencrypt-staging"
+          }
+          hosts = ["jaeger-${var.environment}.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"]
+          tls = [{
+            hosts      = ["jaeger-${var.environment}.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"]
+            secretName = "letsencrypt-staging"
+          }]
+        }
+      }
+      query         = { enabled = false }
+      collector     = { enabled = false }
+      agent         = { enabled = false }
+      cassandra     = { enabled = false }
+      elasticsearch = { enabled = false }
+      kafka         = { enabled = false }
+      indexCleaner  = { enabled = false }
+      esRollover    = { enabled = false }
+    })
+  ]
 
-#       configs = {
-#         params = {
-#           "server.insecure" = true
-#         }
-#       }
+  depends_on = [
+    helm_release.aws_load_balancer_controller,
+    helm_release.ingress_nginx,
+    helm_release.cert_manager
+  ]
+}
 
-#       server = {
-#         ingress = {
-#           enabled          = true
-#           ingressClassName = "nginx"
-#           annotations = {
-#             "nginx.ingress.kubernetes.io/force-ssl-redirect" = "false"
-#             "nginx.ingress.kubernetes.io/backend-protocol"   = "HTTP"
-#             "external-dns.alpha.kubernetes.io/hostname"      = "argocd.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
-#             "cert-manager.io/cluster-issuer"                 = "letsencrypt-staging"
-#           }
-#           tls = [
-#             {
-#               hosts      = ["argocd.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"]
-#               secretName = "letsencrypt-staging"
-#             }
-#           ]
-#         }
-#       }
-#     })
-#   ]
+#############################################
+# OpenTelemetry Collector
+#############################################
+resource "helm_release" "otel_collector" {
+  for_each         = var.addons.otel_collector ? local.one : local.none
+  name             = "otel-collector"
+  repository       = "https://open-telemetry.github.io/opentelemetry-helm-charts"
+  chart            = "opentelemetry-collector"
+  version          = "0.132.0"
+  namespace        = "monitoring"
+  create_namespace = false
+  atomic           = true
 
-#   depends_on = [
-#     helm_release.aws_load_balancer_controller,
-#     helm_release.ingress-nginx,
-#     helm_release.cert_manager
-#   ]
-# }
+  values = [
+    yamlencode({
+      mode    = "deployment"
+      image   = { repository = "otel/opentelemetry-collector-contrib" }
+      service = { type = "ClusterIP" }
+      config = {
+        receivers = {
+          otlp = { protocols = { grpc = { endpoint = "0.0.0.0:4317" }, http = { endpoint = "0.0.0.0:4318" } } }
+        }
+        processors = { batch = {} }
+        exporters = {
+          "otlp/jaeger" = { endpoint = "jaeger-collector:4317", tls = { insecure = true } }
+          "otlp/tempo"  = { endpoint = "tempo:4317", tls = { insecure = true } }
+          prometheus    = { endpoint = "0.0.0.0:9464" }
+          debug         = { verbosity = "normal" }
+        }
+        service = {
+          pipelines = {
+            traces  = { receivers = ["otlp"], processors = ["batch"], exporters = ["otlp/jaeger", "otlp/tempo", "debug"] }
+            metrics = { receivers = ["otlp"], processors = ["batch"], exporters = ["prometheus", "debug"] }
+            logs    = { receivers = ["otlp"], processors = ["batch"], exporters = ["debug"] }
+          }
+          telemetry = { logs = { level = "info" } }
+        }
+      }
+      resources = {
+        requests = { cpu = "100m", memory = "256Mi" }
+        limits   = { cpu = "500m", memory = "512Mi" }
+      }
+    })
+  ]
 
+  depends_on = [
+    helm_release.jaeger,
+    helm_release.ingress_nginx,
+    helm_release.cert_manager,
+    helm_release.aws_load_balancer_controller,
+    helm_release.kube_prometheus_stack
+  ]
+}
 
-# ### Jaeger ###
-# resource "helm_release" "jaeger" {
-#   name             = "jaeger"
-#   namespace        = "giropops-senhas"
-#   repository       = "https://jaegertracing.github.io/helm-charts"
-#   chart            = "jaeger"
-#   version          = "3.4.1"
-#   create_namespace = true
-#   atomic           = true
+#############################################
+# Loki Stack
+#############################################
+resource "helm_release" "loki" {
+  for_each         = var.addons.loki ? local.one : local.none
+  name             = "loki"
+  repository       = "https://grafana.github.io/helm-charts"
+  chart            = "loki-stack"
+  version          = "2.10.2"
+  namespace        = "monitoring"
+  create_namespace = false
+  atomic           = true
+  timeout          = 300
 
-#   values = [
-#     yamlencode({
-#       fullnameOverride   = "jaeger"
-#       provisionDataStore = { cassandra = false, elasticsearch = false }
-#       storage            = { type = "memory" }
+  values = [yamlencode({
+    grafana = { enabled = false }
+    loki = {
+      enabled        = true
+      auth_enabled   = false
+      serviceMonitor = { enabled = true }
+      singleBinary   = { enabled = true }
+      commonConfig   = { replication_factor = 1 }
+      storage        = { type = "filesystem" }
+      schemaConfig = {
+        configs = [{
+          from         = "2024-01-01"
+          store        = "tsdb"
+          object_store = "filesystem"
+          schema       = "v13"
+          index        = { prefix = "index_", period = "24h" }
+        }]
+      }
+      service = { type = "ClusterIP", port = 3100 }
+    }
+    promtail = {
+      enabled = true
+      config = {
+        server    = { http_listen_port = 3101, grpc_listen_port = 0 }
+        positions = { filename = "/run/promtail/positions.yaml" }
+        clients   = [{ url = "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push" }]
+        scrape_configs = [{
+          job_name = "kubernetes-pods"
+          pipeline_stages = [
+            { cri = {} },
+            { regex = { expression = ".*(?:trace[id|_id|Id]|otel.trace_id)=(?P<trace_id>[A-Za-z0-9]+).*" } },
+            { labels = { trace_id = "" } }
+          ]
+          kubernetes_sd_configs = [{ role = "pod" }]
+          relabel_configs = [
+            { source_labels = ["__meta_kubernetes_pod_node_name"], target_label = "node" },
+            { source_labels = ["__meta_kubernetes_namespace"], target_label = "namespace" },
+            { source_labels = ["__meta_kubernetes_pod_name"], target_label = "pod" },
+            { source_labels = ["__meta_kubernetes_pod_container_name"], target_label = "container" },
+            { source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"], target_label = "app" },
+            { source_labels = ["__meta_kubernetes_pod_label_app"], target_label = "app", regex = "(.+)", action = "replace" },
+            { action = "replace", replacement = "/var/log/pods/*$1/*.log", target_label = "__path__", source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"] }
+          ]
+        }]
+      }
+      serviceMonitor = { enabled = true, labels = { release = "kube-prometheus-stack" } }
+    }
+  })]
 
-#       # Run everything in one pod so memory storage works
-#       allInOne = {
-#         enabled = true
+  depends_on = [
+    helm_release.jaeger,
+    helm_release.kube_prometheus_stack
+  ]
+}
 
-#         # Expose OTLP listeners directly on the all-in-one process
-#         extraArgs = [
-#           "--collector.otlp.enabled=true",
-#           "--collector.otlp.grpc.host-port=:4317",
-#           "--collector.otlp.http.host-port=:4318",
-#         ]
+#############################################
+# Tempo
+#############################################
+resource "helm_release" "tempo" {
+  for_each         = var.addons.tempo ? local.one : local.none
+  name             = "tempo"
+  repository       = "https://grafana.github.io/helm-charts"
+  chart            = "tempo"
+  version          = "1.23.3"
+  namespace        = "monitoring"
+  create_namespace = false
+  atomic           = true
+  timeout          = 600
 
-#         service = {
-#           ports = {
-#             http      = 16686 # Jaeger UI
-#             otlp-grpc = 4317  # OTLP gRPC ingest
-#             otlp-http = 4318  # OTLP HTTP ingest
-#             grpc      = 14250 # Classic Jaeger gRPC ingest (optional)
-#           }
-#         }
+  values = [yamlencode({
+    fullnameOverride = "tempo"
+    tempo = {
+      config = <<-EOT
+        server:
+          http_listen_port: 3200
+        distributor:
+          receivers:
+            otlp:
+              protocols:
+                http: {}
+                grpc: {}
+        storage:
+          trace:
+            backend: local
+            local:
+              path: /var/tempo
+      EOT
+    }
+    service        = { type = "ClusterIP" }
+    serviceMonitor = { enabled = true }
+  })]
 
-#         # UI ingress (lives under allInOne, not query)
-#         ingress = {
-#           enabled          = true
-#           ingressClassName = "nginx"
-#           annotations = {
-#             "nginx.ingress.kubernetes.io/force-ssl-redirect" = "false"
-#             "nginx.ingress.kubernetes.io/backend-protocol"   = "HTTP"
-#             "external-dns.alpha.kubernetes.io/hostname"      = "jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
-#             "cert-manager.io/cluster-issuer"                 = "letsencrypt-staging"
-#           }
-#           hosts = ["jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"]
-#           tls = [{
-#             hosts      = ["jaeger.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"]
-#             secretName = "letsencrypt-staging"
-#           }]
-#         }
-#       }
-
-#       # Turn off split components to avoid duplicate Services
-#       query     = { enabled = false }
-#       collector = { enabled = false }
-#       agent     = { enabled = false }
-
-#       cassandra     = { enabled = false }
-#       elasticsearch = { enabled = false }
-#       kafka         = { enabled = false }
-#       indexCleaner  = { enabled = false }
-#       esRollover    = { enabled = false }
-#     })
-#   ]
-
-#   depends_on = [
-#     helm_release.aws_load_balancer_controller,
-#     helm_release.ingress-nginx,
-#     helm_release.cert_manager
-#   ]
-# }
-
-# ## Opentelemetry ###
-# resource "helm_release" "otel_collector" {
-#   name             = "otel-collector"
-#   namespace        = "giropops-senhas"
-#   repository       = "https://open-telemetry.github.io/opentelemetry-helm-charts"
-#   chart            = "opentelemetry-collector"
-#   version          = "0.132.0"
-#   create_namespace = false
-#   atomic           = true
-
-#   values = [
-#     yamlencode({
-#       mode    = "deployment"
-#       image   = { repository = "otel/opentelemetry-collector-contrib" }
-#       service = { type = "ClusterIP" }
-
-#       config = {
-#         receivers = {
-#           otlp = {
-#             protocols = {
-#               grpc = { endpoint = "0.0.0.0:4317" }
-#               http = { endpoint = "0.0.0.0:4318" }
-#             }
-#           }
-#         }
-
-#         processors = {
-#           batch = {}
-#           # memory_limiter = { check_interval = "5s", limit_percentage = 80, spike_limit_percentage = 25 }
-#         }
-
-#         exporters = {
-#           "otlp/jaeger" = {
-#             endpoint = "jaeger-collector:4317"
-#             tls      = { insecure = true }
-#           }
-#           "otlp/tempo" = {
-#             endpoint = "tempo:4317"
-#             tls      = { insecure = true }
-#           }
-#           prometheus = { endpoint = "0.0.0.0:9464" }
-#           debug      = { verbosity = "normal" }
-#         }
-
-#         service = {
-#           pipelines = {
-#             traces  = { receivers = ["otlp"], processors = ["batch"], exporters = ["otlp/jaeger", "otlp/tempo", "debug"] }
-#             metrics = { receivers = ["otlp"], processors = ["batch"], exporters = ["prometheus", "debug"] }
-#             logs    = { receivers = ["otlp"], processors = ["batch"], exporters = ["debug"] }
-#           }
-#           telemetry = { logs = { level = "info" } }
-#         }
-#       }
-
-#       resources = {
-#         requests = { cpu = "100m", memory = "256Mi" }
-#         limits   = { cpu = "500m", memory = "512Mi" }
-#       }
-#     })
-#   ]
-
-#   depends_on = [
-#     helm_release.jaeger,
-#     helm_release.ingress-nginx,
-#     helm_release.cert_manager,
-#     helm_release.aws_load_balancer_controller,
-#   ]
-# }
-
-
-# ## Loki Stack ###
-# resource "helm_release" "loki" {
-#   name             = "loki"
-#   namespace        = "giropops-senhas"
-#   repository       = "https://grafana.github.io/helm-charts"
-#   chart            = "loki-stack"
-#   version          = "2.10.2"
-#   create_namespace = false
-#   atomic           = true
-#   timeout          = 300
-
-#   values = [yamlencode({
-#     grafana = { enabled = false }
-
-#     loki = {
-#       enabled        = true
-#       auth_enabled   = false
-#       serviceMonitor = { enabled = true }
-#       singleBinary   = { enabled = true }
-#       commonConfig   = { replication_factor = 1 }
-#       storage        = { type = "filesystem" }
-#       schemaConfig = {
-#         configs = [{
-#           from         = "2024-01-01"
-#           store        = "tsdb"
-#           object_store = "filesystem"
-#           schema       = "v13"
-#           index        = { prefix = "index_", period = "24h" }
-#         }]
-#       }
-#       service = { type = "ClusterIP", port = 3100 }
-#     }
-
-#     promtail = {
-#       enabled = true
-
-#       # use the chart's default /run/promtail (already mounted & writable)
-#       config = {
-#         server    = { http_listen_port = 3101, grpc_listen_port = 0 }
-#         positions = { filename = "/run/promtail/positions.yaml" }
-
-#         clients = [{
-#           url = "http://loki.giropops-senhas.svc.cluster.local:3100/loki/api/v1/push"
-#         }]
-
-#         scrape_configs = [{
-#           job_name = "kubernetes-pods"
-#           pipeline_stages = [
-#             { cri = {} },
-#             { regex = { expression = ".*(?:trace[id|_id|Id]|otel.trace_id)=(?P<trace_id>[A-Za-z0-9]+).*" } },
-#             { labels = { trace_id = "" } }
-#           ]
-#           kubernetes_sd_configs = [{ role = "pod" }]
-#           relabel_configs = [
-#             { source_labels = ["__meta_kubernetes_pod_node_name"], target_label = "node" },
-#             { source_labels = ["__meta_kubernetes_namespace"], target_label = "namespace" },
-#             { source_labels = ["__meta_kubernetes_pod_name"], target_label = "pod" },
-#             { source_labels = ["__meta_kubernetes_pod_container_name"], target_label = "container" },
-#             { source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"], target_label = "app" },
-#             { source_labels = ["__meta_kubernetes_pod_label_app"], target_label = "app", regex = "(.+)", action = "replace" },
-#             { action       = "replace",
-#               replacement  = "/var/log/pods/*$1/*.log",
-#               target_label = "__path__",
-#             source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"] }
-#           ]
-#         }]
-#       }
-
-#       serviceMonitor = {
-#         enabled = true
-#         labels  = { release = "kube-prometheus-stack" }
-#       }
-#     }
-#   })]
-
-#   depends_on = [helm_release.jaeger]
-# }
-
-# ### Tempo ###
-# resource "helm_release" "tempo" {
-#   name             = "tempo"
-#   namespace        = "giropops-senhas"
-#   repository       = "https://grafana.github.io/helm-charts"
-#   chart            = "tempo"
-#   version          = "1.23.3"
-#   create_namespace = false
-#   atomic           = true
-#   timeout          = 600
-
-#   values = [yamlencode({
-#     fullnameOverride = "tempo"
-
-#     tempo = {
-#       config = <<-EOT
-#         server:
-#           http_listen_port: 3200
-
-#         distributor:
-#           receivers:
-#             otlp:
-#               protocols:
-#                 http: {}   # :4318
-#                 grpc: {}   # :4317
-
-#         # Simple local storage good for labs. No WAL settings needed.
-#         storage:
-#           trace:
-#             backend: local
-#             local:
-#               path: /var/tempo
-
-#       EOT
-#     }
-
-#     service = {
-#       type = "ClusterIP"
-#     }
-
-#     # Let kube-prometheus-stack auto-discover Tempo metrics
-#     serviceMonitor = { enabled = true }
-#   })]
-
-#   depends_on = [helm_release.otel_collector]
-# }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  depends_on = [
+    helm_release.otel_collector,
+    helm_release.kube_prometheus_stack
+  ]
+}

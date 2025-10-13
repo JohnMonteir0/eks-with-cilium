@@ -196,4 +196,52 @@ resource "helm_release" "tetragon" {
   depends_on = [helm_release.cilium]
 }
 
+resource "aws_eks_addon" "coredns" {
+  cluster_name                = var.cluster_name
+  addon_name                  = "coredns"
+  addon_version               = "v1.12.3-eksbuild.1"
+  resolve_conflicts_on_create = "OVERWRITE"
+  resolve_conflicts_on_update = "OVERWRITE"
+
+  configuration_values = jsonencode({
+    tolerations = [
+      { key = "node.kubernetes.io/not-ready", operator = "Exists" },
+      { key = "node.cilium.io/agent-not-ready", operator = "Exists" }
+    ]
+  })
+  depends_on = [
+    helm_release.cilium
+  ]
+}
+
+#############################################
+# Karpenter
+#############################################
+resource "helm_release" "karpenter" {
+  namespace  = "kube-system"
+  name       = "karpenter"
+  repository = "oci://public.ecr.aws/karpenter"
+  chart      = "karpenter"
+  version    = "1.1.6"
+  atomic     = true
+  wait       = true
+  timeout    = 300
+
+  set {
+    name  = "settings.clusterName"
+    value = var.cluster_name
+  }
+
+  set {
+    name  = "settings.clusterEndpoint"
+    value = var.cluster_endpoint
+  }
+
+  set {
+    name  = "settings.interruptionQueue"
+    value = var.queue_name
+  }
+  depends_on = [aws_eks_addon.coredns]
+}
+
 

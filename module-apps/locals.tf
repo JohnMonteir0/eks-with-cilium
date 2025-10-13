@@ -15,3 +15,10 @@ locals {
     "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type" = "ip"
   }
 }
+
+# Avoid repeating the ternary:
+# module-apps/locals.tf
+locals {
+  one  = { this = true }
+  none = {}
+}

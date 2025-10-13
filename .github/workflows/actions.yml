@@ -61,7 +61,7 @@ jobs:
             backend/${{ github.ref_name == 'development' && 'dev' || github.ref_name == 'staging' && 'stg' || 'prod' }}.tfbackend
 
   approve:
-    name: "Approval (stg/prod)"
+    name: "Manual Approval "
     needs: plan
     runs-on: ubuntu-latest
     # For all branches
