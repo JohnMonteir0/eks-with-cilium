@@ -19,7 +19,7 @@ bootstrap_node = {
   instance_type = "t3.medium"
   min           = 2
   max           = 5
-  desired       = 3
+  desired       = 2
 }
 
 enable_nat_gateway     = true
