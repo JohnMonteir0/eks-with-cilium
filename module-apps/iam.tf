@@ -1,7 +1,8 @@
 # ALB (AWS Load Balancer Controller)
 resource "aws_iam_role" "eks_load_balancer_controller" {
-  name = "${local.iam_name_prefix}-lbc"
-  path = local.iam_path
+  for_each = var.addons.alb ? local.one : local.none
+  name     = "${local.iam_name_prefix}-lbc"
+  path     = local.iam_path
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
@@ -20,21 +21,24 @@ resource "aws_iam_role" "eks_load_balancer_controller" {
 }
 
 resource "aws_iam_policy" "load_balancer_controller_policy" {
-  name   = "${local.iam_name_prefix}-lbc"
-  path   = local.iam_path
-  policy = data.aws_iam_policy_document.lb_controller_policy.json
-  tags   = var.tags
+  for_each = var.addons.alb ? local.one : local.none
+  name     = "${local.iam_name_prefix}-lbc"
+  path     = local.iam_path
+  policy   = data.aws_iam_policy_document.lb_controller_policy.json
+  tags     = var.tags
 }
 
 resource "aws_iam_role_policy_attachment" "attach_load_balancer_policy" {
-  role       = aws_iam_role.eks_load_balancer_controller.name
-  policy_arn = aws_iam_policy.load_balancer_controller_policy.arn
+  for_each   = var.addons.alb ? local.one : local.none
+  role       = aws_iam_role.eks_load_balancer_controller["this"].name
+  policy_arn = aws_iam_policy.load_balancer_controller_policy["this"].arn
 }
 
 # EBS CSI Controller
 resource "aws_iam_role" "eks_ebs_csi_controller" {
-  name = "${local.iam_name_prefix}-ebs-csi"
-  path = local.iam_path
+  for_each = var.addons.alb ? local.one : local.none
+  name     = "${local.iam_name_prefix}-ebs-csi"
+  path     = local.iam_path
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
@@ -53,14 +57,16 @@ resource "aws_iam_role" "eks_ebs_csi_controller" {
 }
 
 resource "aws_iam_role_policy_attachment" "attach_ebs_csi_policy" {
-  role       = aws_iam_role.eks_ebs_csi_controller.name
+  for_each   = var.addons.alb ? local.one : local.none
+  role       = aws_iam_role.eks_ebs_csi_controller["this"].name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
 }
 
 # ExternalDNS
 resource "aws_iam_role" "eks_external_dns" {
-  name = "${local.iam_name_prefix}-external-dns"
-  path = local.iam_path
+  for_each = var.addons.alb ? local.one : local.none
+  name     = "${local.iam_name_prefix}-external-dns"
+  path     = local.iam_path
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
@@ -79,13 +85,15 @@ resource "aws_iam_role" "eks_external_dns" {
 }
 
 resource "aws_iam_policy" "external_dns_policy" {
-  name   = "${local.iam_name_prefix}-external-dns"
-  path   = local.iam_path
-  policy = data.aws_iam_policy_document.external_dns_policy.json
-  tags   = var.tags
+  for_each = var.addons.alb ? local.one : local.none
+  name     = "${local.iam_name_prefix}-external-dns"
+  path     = local.iam_path
+  policy   = data.aws_iam_policy_document.external_dns_policy.json
+  tags     = var.tags
 }
 
 resource "aws_iam_role_policy_attachment" "attach_external_dns_policy" {
-  role       = aws_iam_role.eks_external_dns.name
-  policy_arn = aws_iam_policy.external_dns_policy.arn
+  for_each   = var.addons.alb ? local.one : local.none
+  role       = aws_iam_role.eks_external_dns["this"].name
+  policy_arn = aws_iam_policy.external_dns_policy["this"].arn
 }

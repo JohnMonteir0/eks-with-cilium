@@ -87,3 +87,21 @@ variable "karpenter_instance_types" { type = list(string) } # e.g. ["t3.small","
 variable "karpenter_cpu_limit" { type = string } # e.g. "16" (cluster-wide pool cap; K8s quantity)
 
 variable "karpenter_disk_gi" { type = number } # e.g. 20
+
+### Addons ###
+variable "addons" {
+  type = object({
+    alb                   = optional(bool, false)
+    external_dns          = optional(bool, false)
+    ingress_nginx         = optional(bool, false)
+    ebs_csi               = optional(bool, false)
+    cert_manager          = optional(bool, false)
+    kube_prometheus_stack = optional(bool, false)
+    argocd                = optional(bool, false)
+    jaeger                = optional(bool, false)
+    otel_collector        = optional(bool, false)
+    loki                  = optional(bool, false)
+    tempo                 = optional(bool, false)
+  })
+  default = {}
+}

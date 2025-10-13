@@ -1,4 +1,4 @@
-name: "Terraform: plan → approval (stg/prod) → apply"
+name: "Terraform: Infrastructure Pipeline"
 
 on:
   push:
@@ -61,11 +61,11 @@ jobs:
             backend/${{ github.ref_name == 'development' && 'dev' || github.ref_name == 'staging' && 'stg' || 'prod' }}.tfbackend
 
   approve:
-    name: "Approval (stg/prod)"
+    name: "Manual Approval "
     needs: plan
     runs-on: ubuntu-latest
-    # Only for staging/main
-    if: ${{ github.ref_name == 'staging' || github.ref_name == 'main' }}
+    # For all branches
+    if: ${{ github.ref_name == 'development' || github.ref_name == 'staging' || github.ref_name == 'main' }}
     steps:
       - name: Download plan tail
         uses: actions/download-artifact@v4
@@ -101,8 +101,8 @@ jobs:
     name: "Apply"
     needs: [plan, approve]
     runs-on: ubuntu-latest
-    # Run on dev always; on stg/prod only after approval
-    if: ${{ github.ref_name == 'development' || needs.approve.result == 'success' }}
+    # Apply only after approval on all branches
+    if: ${{ needs.approve.result == 'success' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
