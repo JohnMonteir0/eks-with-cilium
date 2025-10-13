@@ -11,7 +11,7 @@ module "network" {
 
 # Pause so Cilium comes up
 resource "time_sleep" "after_cilium" {
-  depends_on      = [helm_release.cilium]
+  depends_on      = [module.network]
   create_duration = "90s"
 }
 resource "aws_eks_addon" "coredns" {
