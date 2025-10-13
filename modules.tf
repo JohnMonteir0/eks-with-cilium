@@ -1,7 +1,10 @@
 module "network" {
-  source       = "./module-network"
-  cluster_name = module.eks_bottlerocket.cluster_name
-  environment  = var.environment
+  source           = "./module-network"
+  cluster_name     = module.eks_bottlerocket.cluster_name
+  environment      = var.environment
+  cluster_endpoint = module.eks_bottlerocket.cluster_endpoint
+  queue_name       = module.karpenter.queue_name
+  coredns_ready_id = terraform_data.coredns_ready.id
 
   depends_on = [module.eks_bottlerocket]
 }
@@ -20,21 +23,29 @@ resource "aws_eks_addon" "coredns" {
       { key = "node.cilium.io/agent-not-ready", operator = "Exists" }
     ]
   })
+}
 
-  depends_on = [module.network]
+resource "terraform_data" "coredns_ready" {
+  depends_on = [aws_eks_addon.coredns]
+  input      = "ready"
 }
 module "helm" {
   source                  = "./module-apps"
+  environment             = var.environment
   cluster_oidc_issuer_url = module.eks_bottlerocket.cluster_oidc_issuer_url
   cluster_name            = module.eks_bottlerocket.cluster_name
   vpc_id                  = module.vpc.vpc_id
-  cluster_endpoint        = module.eks_bottlerocket.cluster_endpoint
-  queue_name              = module.karpenter.queue_name
   name_prefix             = local.name
   tags                    = local.tags
   public_subnet_ids_csv   = join(",", module.vpc.public_subnets)
 
-  depends_on = [aws_eks_addon.coredns]
+  addons = var.addons
+
+  depends_on = [
+    module.network,
+    kubectl_manifest.karpenter,
+    aws_eks_addon.coredns
+  ]
 }
 
 resource "kubectl_manifest" "letsencrypt" {
@@ -49,7 +60,7 @@ resource "kubectl_manifest" "karpenter" {
 
   # Ensure CRDs/webhooks exist + IAM/identity ready before applying NodeClass/NodePool
   depends_on = [
-    module.helm,                      # karpenter Helm release lives here
+    module.network,                   # karpenter Helm release lives here
     module.karpenter,                 # IAM role / (optional) pod identity association
     aws_eks_addon.pod_identity_agent, # if you enabled the EKS Pod Identity addon
   ]
