@@ -7,7 +7,3 @@ data "aws_eks_cluster" "this" {
 data "aws_eks_cluster_auth" "this" {
   name = var.cluster_name
 }
-
-resource "terraform_data" "coredns_gate" {
-  input = var.coredns_ready_id
-}
