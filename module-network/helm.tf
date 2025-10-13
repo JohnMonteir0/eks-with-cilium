@@ -241,7 +241,7 @@ resource "helm_release" "karpenter" {
     name  = "settings.interruptionQueue"
     value = var.queue_name
   }
-  depends_on = [terraform_data.coredns_gate]
+  depends_on = [aws_eks_addon.coredns]
 }
 
 
