@@ -22,8 +22,7 @@ module "helm" {
 
   depends_on = [
     module.network,
-    kubectl_manifest.karpenter,
-    aws_eks_addon.coredns
+    kubectl_manifest.karpenter
   ]
 }
 
