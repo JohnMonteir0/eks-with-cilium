@@ -19,15 +19,6 @@ variable "aws_region" {
   default = "us-east-1"
 }
 
-variable "cluster_endpoint" {
-  type = string
-}
-
-variable "queue_name" {
-  description = "Name of the SQS queue"
-  type        = string
-}
-
 variable "public_subnet_ids_csv" {
   type    = string
   default = ""
@@ -39,4 +30,26 @@ variable "tags" {
 variable "name_prefix" {
   type        = string
   description = "Prefix for IAM names and tags (e.g., platform-stg)"
+}
+
+variable "environment" {
+  type = string # "dev" | "stg" | "prod"
+}
+
+# Choose which helm installation to enable
+variable "addons" {
+  type = object({
+    alb                   = optional(bool, false)
+    external_dns          = optional(bool, false)
+    ingress_nginx         = optional(bool, false)
+    ebs_csi               = optional(bool, false)
+    cert_manager          = optional(bool, false)
+    kube_prometheus_stack = optional(bool, false)
+    argocd                = optional(bool, false)
+    jaeger                = optional(bool, false)
+    otel_collector        = optional(bool, false)
+    loki                  = optional(bool, false)
+    tempo                 = optional(bool, false)
+  })
+  default = {}
 }

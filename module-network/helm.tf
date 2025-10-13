@@ -196,4 +196,34 @@ resource "helm_release" "tetragon" {
   depends_on = [helm_release.cilium]
 }
 
+#############################################
+# Karpenter
+#############################################
+resource "helm_release" "karpenter" {
+  namespace  = "kube-system"
+  name       = "karpenter"
+  repository = "oci://public.ecr.aws/karpenter"
+  chart      = "karpenter"
+  version    = "1.1.6"
+  atomic     = true
+  wait       = true
+  timeout    = 300
+
+  set {
+    name  = "settings.clusterName"
+    value = var.cluster_name
+  }
+
+  set {
+    name  = "settings.clusterEndpoint"
+    value = var.cluster_endpoint
+  }
+
+  set {
+    name  = "settings.interruptionQueue"
+    value = var.queue_name
+  }
+  depends_on = [terraform_data.coredns_gate]
+}
+
 

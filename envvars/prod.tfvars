@@ -19,7 +19,7 @@ bootstrap_node = {
   instance_type = "t3.medium"
   min           = 3
   max           = 8
-  desired       = 6
+  desired       = 5
 }
 
 enable_nat_gateway     = true
@@ -31,3 +31,18 @@ karpenter_capacity_type  = "on-demand"
 karpenter_instance_types = ["t3.medium"]
 karpenter_cpu_limit      = "128"
 karpenter_disk_gi        = 30
+
+# Addons to enable or disable
+addons = {
+  alb                   = true
+  external_dns          = true
+  ingress_nginx         = true
+  ebs_csi               = true
+  cert_manager          = true
+  kube_prometheus_stack = true
+  argocd                = true
+  jaeger                = true
+  otel_collector        = true
+  loki                  = true
+  tempo                 = true
+}
