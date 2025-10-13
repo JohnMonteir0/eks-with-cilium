@@ -4,7 +4,6 @@ module "network" {
   environment      = var.environment
   cluster_endpoint = module.eks_bottlerocket.cluster_endpoint
   queue_name       = module.karpenter.queue_name
-  coredns_ready_id = terraform_data.coredns_ready.id
 
   depends_on = [module.eks_bottlerocket]
 }

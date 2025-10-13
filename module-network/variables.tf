@@ -15,7 +15,3 @@ variable "queue_name" {
   description = "Name of the SQS queue"
   type        = string
 }
-
-variable "coredns_ready_id" {
-  type = string
-}

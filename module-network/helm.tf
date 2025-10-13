@@ -197,7 +197,7 @@ resource "helm_release" "tetragon" {
 }
 
 resource "aws_eks_addon" "coredns" {
-  cluster_name                = module.eks_bottlerocket.cluster_name
+  cluster_name                = var.cluster_name
   addon_name                  = "coredns"
   addon_version               = "v1.12.3-eksbuild.1"
   resolve_conflicts_on_create = "OVERWRITE"
