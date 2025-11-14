@@ -46,16 +46,27 @@ resource "helm_release" "cilium" {
     value = "true"
   }
 
-  # --- Filter: only use your pod subnets (100.64.0.0/16) ---
+  # --- Filter: only use pod subnets (100.64.0.0/16) ---
   set {
     name  = "eni.subnetTagsFilter[0]"
     value = "cilium-pod-subnet=true"
   }
 
-  # Optional: higher pod density
+  # --- Optional: higher pod density
   set {
     name  = "eni.awsEnablePrefixDelegation"
     value = "true"
+  }
+
+  # --- Cilium Ingress
+  set {
+    name  = "ingressController.enabled"
+    value = "true"
+  }
+
+  set {
+    name  = "ingressController.loadbalancerMode"
+    value = "shared"
   }
 
   # =============================
