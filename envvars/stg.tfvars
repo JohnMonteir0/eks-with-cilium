@@ -16,7 +16,7 @@ bootstrap_node = {
   instance_type = "t3.medium"
   min           = 2
   max           = 5
-  desired       = 3
+  desired       = 2
 }
 
 enable_nat_gateway     = true
@@ -33,7 +33,7 @@ karpenter_disk_gi        = 20
 addons = {
   alb                   = true
   external_dns          = true
-  ingress_nginx         = true
+  ingress_nginx         = false
   ebs_csi               = true
   cert_manager          = true
   kube_prometheus_stack = false

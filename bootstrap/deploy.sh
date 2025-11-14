@@ -45,7 +45,6 @@ echo "S3 bucket:      ${s3_bucket}"
 echo "DynamoDB Table: ${dynamodb_table}"
 
 # Write a per-env Terraform backend config file:
-mkdir -p backend
 backend_file="../backend/${ENVIRONMENT}.tfbackend"
 cat > "${backend_file}" <<EOF
 bucket         = "${s3_bucket}"
@@ -61,11 +60,11 @@ echo "*** Use it with: terraform init -reconfigure -backend-config=${backend_fil
 
 
 # # DEV
-# ./deploy-backend.sh dev terraform-backend tf-backend-dev backend.yaml
+# ./deploy.sh dev terraform-backend tf-backend-dev backend.yaml
 
 # # STG
-# ./deploy-backend.sh stg terraform-backend tf-backend-stg backend.yaml
+# ./deploy.sh stg terraform-backend tf-backend-stg backend.yaml
 
 # # PROD
-# ./deploy-backend.sh prod terraform-backend tf-backend-prod backend.yaml
+# ./deploy.sh prod terraform-backend tf-backend-prod backend.yaml
 
