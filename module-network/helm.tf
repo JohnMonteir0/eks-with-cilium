@@ -58,6 +58,16 @@ resource "helm_release" "cilium" {
     value = "true"
   }
 
+  set {
+    name  = "envoy.enabled"
+    value = "true"
+  }
+
+  set {
+    name  = "gatewayAPI.enabled"
+    value = "true"
+  }
+
   # --- Cilium Ingress
   set {
     name  = "ingressController.enabled"
