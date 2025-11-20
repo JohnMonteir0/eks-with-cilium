@@ -226,7 +226,7 @@ resource "helm_release" "argocd" {
   values = [
     yamlencode({
       global = {
-        domain = "argocd-${var.environment}.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
+        domain = "argocd-${var.environment}.${data.aws_caller_identity.current.account_id}.monteiro.io"
       }
       configs = { params = { "server.insecure" = true } }
       server = {
@@ -236,11 +236,11 @@ resource "helm_release" "argocd" {
           annotations = {
             "ingress.cilium.io/tls-passthrough"         = "enabled"
             "ingress.cilium.io/force-https"             = "disabled"
-            "external-dns.alpha.kubernetes.io/hostname" = "argocd-${var.environment}.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
+            "external-dns.alpha.kubernetes.io/hostname" = "argocd-${var.environment}.${data.aws_caller_identity.current.account_id}.monteiro.io"
             "cert-manager.io/cluster-issuer"            = "letsencrypt-staging"
           }
           tls = [{
-            hosts      = ["argocd-${var.environment}.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"]
+            hosts      = ["argocd-${var.environment}.${data.aws_caller_identity.current.account_id}.monteiro.io"]
             secretName = "letsencrypt-staging"
           }]
         }
@@ -294,12 +294,12 @@ resource "helm_release" "jaeger" {
           annotations = {
             "ingress.cilium.io/tls-passthrough"         = "enabled"
             "ingress.cilium.io/force-https"             = "disabled"
-            "external-dns.alpha.kubernetes.io/hostname" = "jaeger-${var.environment}.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
+            "external-dns.alpha.kubernetes.io/hostname" = "jaeger-${var.environment}.${data.aws_caller_identity.current.account_id}.monteiro.io"
             "cert-manager.io/cluster-issuer"            = "letsencrypt-staging"
           }
-          hosts = ["jaeger-${var.environment}.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"]
+          hosts = ["jaeger-${var.environment}.${data.aws_caller_identity.current.account_id}.monteiro.io"]
           tls = [{
-            hosts      = ["jaeger-${var.environment}.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"]
+            hosts      = ["jaeger-${var.environment}.${data.aws_caller_identity.current.account_id}.monteiro.io"]
             secretName = "letsencrypt-staging"
           }]
         }

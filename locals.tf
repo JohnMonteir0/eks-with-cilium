@@ -13,7 +13,7 @@ locals {
 
   # To auto-build a default Hubble host when var.hubble_host is empty
   account_id          = data.aws_caller_identity.current.account_id
-  hubble_host_default = "hubble-${var.environment}.${local.account_id}.realhandsonlabs.net"
+  hubble_host_default = "hubble-${var.environment}.${local.account_id}.monteiro.io"
 
   tags = merge(
     {
