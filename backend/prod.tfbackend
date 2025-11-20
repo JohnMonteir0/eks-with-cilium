@@ -1,5 +1,5 @@
-bucket         = "prod-terraform-backend-tfstate-aa688c90"
+bucket         = "prod-terraform-backend-tfstate-519d0af0"
 key            = "eks/terraform.tfstate"
 region         = "us-east-1"
-dynamodb_table = "prod-terraform-backend-locks-aa688c90"
+dynamodb_table = "prod-terraform-backend-locks-519d0af0"
 encrypt        = true
