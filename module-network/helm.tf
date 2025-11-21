@@ -80,6 +80,21 @@ resource "helm_release" "cilium" {
     value = "shared"
   }
 
+  set {
+    name  = "ingressController.service.type"
+    value = "LoadBalancer"
+  }
+
+  set {
+    name  = "ingressController.service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-type"
+    value = "network"
+  }
+
+  set {
+    name  = "ingressController.service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-scheme"
+    value = "internet-facing"
+  }
+
   # =============================
   # Hubble (relay + UI)
   # =============================
