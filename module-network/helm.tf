@@ -9,7 +9,6 @@ resource "helm_release" "cilium" {
   wait         = true
   replace      = true
   timeout      = 900
-  force_update = true
 
   # --- API server host/port for kube-proxy replacement ---
   set {
