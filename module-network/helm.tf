@@ -1,14 +1,14 @@
 ### Cilium ###
 resource "helm_release" "cilium" {
-  name        = "cilium"
-  description = "A Helm chart to deploy cilium"
-  namespace   = "kube-system"
-  chart       = "cilium"
-  version     = "1.18.1"
-  repository  = "https://helm.cilium.io"
-  wait        = true
-  replace     = true
-  timeout     = 900
+  name         = "cilium"
+  description  = "A Helm chart to deploy cilium"
+  namespace    = "kube-system"
+  chart        = "cilium"
+  version      = "1.18.1"
+  repository   = "https://helm.cilium.io"
+  wait         = true
+  replace      = true
+  timeout      = 900
 
   # --- API server host/port for kube-proxy replacement ---
   set {
@@ -46,16 +46,52 @@ resource "helm_release" "cilium" {
     value = "true"
   }
 
-  # --- Filter: only use your pod subnets (100.64.0.0/16) ---
+  # --- Filter: only use pod subnets (100.64.0.0/16) ---
   set {
     name  = "eni.subnetTagsFilter[0]"
     value = "cilium-pod-subnet=true"
   }
 
-  # Optional: higher pod density
+  # --- Optional: higher pod density
   set {
     name  = "eni.awsEnablePrefixDelegation"
     value = "true"
+  }
+
+  set {
+    name  = "envoy.enabled"
+    value = "true"
+  }
+
+  set {
+    name  = "gatewayAPI.enabled"
+    value = "true"
+  }
+
+  # --- Cilium Ingress
+  set {
+    name  = "ingressController.enabled"
+    value = "true"
+  }
+
+  set {
+    name  = "ingressController.loadbalancerMode"
+    value = "shared"
+  }
+
+  set {
+    name  = "ingressController.service.type"
+    value = "LoadBalancer"
+  }
+
+  set {
+    name  = "ingressController.service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-type"
+    value = "network"
+  }
+
+  set {
+    name  = "ingressController.service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-scheme"
+    value = "internet-facing"
   }
 
   # =============================
@@ -89,11 +125,11 @@ resource "helm_release" "cilium" {
   }
   set {
     name  = "hubble.ui.ingress.className"
-    value = "nginx"
+    value = "cilium"
   }
   set {
     name  = "hubble.ui.ingress.hosts[0]"
-    value = "hubble-${var.environment}.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
+    value = "hubble-${var.environment}.${data.aws_caller_identity.current.account_id}.montlabz.com"
   }
   set {
     name  = "hubble.ui.ingress.paths[0].path"
