@@ -58,42 +58,6 @@ resource "helm_release" "cilium" {
     value = "true"
   }
 
-  set {
-    name  = "envoy.enabled"
-    value = "true"
-  }
-
-  set {
-    name  = "gatewayAPI.enabled"
-    value = "true"
-  }
-
-  # --- Cilium Ingress
-  set {
-    name  = "ingressController.enabled"
-    value = "true"
-  }
-
-  set {
-    name  = "ingressController.loadbalancerMode"
-    value = "shared"
-  }
-
-  set {
-    name  = "ingressController.service.type"
-    value = "LoadBalancer"
-  }
-
-  set {
-    name  = "ingressController.service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-type"
-    value = "network"
-  }
-
-  set {
-    name  = "ingressController.service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-scheme"
-    value = "internet-facing"
-  }
-
   # =============================
   # Hubble (relay + UI)
   # =============================

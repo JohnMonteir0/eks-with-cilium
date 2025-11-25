@@ -76,31 +76,31 @@ resource "helm_release" "external_dns" {
 #############################################
 # Ingress NGINX
 #############################################
-# resource "helm_release" "ingress_nginx" {
-#   for_each         = var.addons.ingress_nginx ? local.one : local.none
-#   name             = "ingress-nginx"
-#   repository       = "https://kubernetes.github.io/ingress-nginx"
-#   chart            = "ingress-nginx"
-#   version          = "4.13.2"
-#   namespace        = "ingress-nginx"
-#   create_namespace = true
-#   replace          = true
-#   atomic           = true
+resource "helm_release" "ingress_nginx" {
+  for_each         = var.addons.ingress_nginx ? local.one : local.none
+  name             = "ingress-nginx"
+  repository       = "https://kubernetes.github.io/ingress-nginx"
+  chart            = "ingress-nginx"
+  version          = "4.13.2"
+  namespace        = "ingress-nginx"
+  create_namespace = true
+  replace          = true
+  atomic           = true
 
-#   values = [
-#     yamlencode({
-#       controller = {
-#         service = {
-#           annotations = local.annotations
-#         }
-#       }
-#     })
-#   ]
+  values = [
+    yamlencode({
+      controller = {
+        service = {
+          annotations = local.annotations
+        }
+      }
+    })
+  ]
 
-#   depends_on = [
-#     helm_release.aws_load_balancer_controller
-#   ]
-# }
+  depends_on = [
+    helm_release.aws_load_balancer_controller
+  ]
+}
 
 #############################################
 # EBS CSI Driver
@@ -232,10 +232,10 @@ resource "helm_release" "argocd" {
       server = {
         ingress = {
           enabled          = true
-          ingressClassName = "cilium"
+          ingressClassName = "nginx"
           annotations = {
-            "ingress.cilium.io/tls-passthrough"         = "enabled"
-            "ingress.cilium.io/force-https"             = "disabled"
+            "nginx.ingress.kubernetes.io/force-ssl-redirect" = "false"
+            "nginx.ingress.kubernetes.io/backend-protocol"   = "HTTP"
             "external-dns.alpha.kubernetes.io/hostname" = "argocd-${var.environment}.${data.aws_caller_identity.current.account_id}.montlabz.com"
             "cert-manager.io/cluster-issuer"            = "letsencrypt-staging"
           }
@@ -290,10 +290,10 @@ resource "helm_release" "jaeger" {
         }
         ingress = {
           enabled          = true
-          ingressClassName = "cilium"
+          ingressClassName = "nginx"
           annotations = {
-            "ingress.cilium.io/tls-passthrough"         = "enabled"
-            "ingress.cilium.io/force-https"             = "disabled"
+            "nginx.ingress.kubernetes.io/force-ssl-redirect" = "false"
+            "nginx.ingress.kubernetes.io/backend-protocol"   = "HTTP"
             "external-dns.alpha.kubernetes.io/hostname" = "jaeger-${var.environment}.${data.aws_caller_identity.current.account_id}.montlabz.com"
             "cert-manager.io/cluster-issuer"            = "letsencrypt-staging"
           }
