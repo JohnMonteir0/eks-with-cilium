@@ -84,4 +84,7 @@ module "eks_bottlerocket" {
   })
 
   tags = local.tags
+
+  depends_on = [ module.vpc ]
+
 }

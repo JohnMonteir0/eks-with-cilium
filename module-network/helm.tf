@@ -129,7 +129,7 @@ resource "helm_release" "cilium" {
   }
   set {
     name  = "hubble.ui.ingress.hosts[0]"
-    value = "hubble-${var.environment}.${data.aws_caller_identity.current.account_id}.monteiro.io"
+    value = "hubble-${var.environment}.${data.aws_caller_identity.current.account_id}.montlabz.com"
   }
   set {
     name  = "hubble.ui.ingress.paths[0].path"
