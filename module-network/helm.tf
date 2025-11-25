@@ -89,7 +89,7 @@ resource "helm_release" "cilium" {
   }
   set {
     name  = "hubble.ui.ingress.className"
-    value = "cilium"
+    value = "nginx"
   }
   set {
     name  = "hubble.ui.ingress.hosts[0]"
