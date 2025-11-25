@@ -25,7 +25,7 @@ one_nat_gateway_per_az = false
 
 # allow both t3.small and t3.medium, on-demand (or spot)
 karpenter_capacity_type  = "on-demand"
-karpenter_instance_types = ["t3.small", "t3.medium"]
+karpenter_instance_types = ["t3.medium"]
 karpenter_cpu_limit      = "48"
 karpenter_disk_gi        = 20
 
@@ -36,7 +36,7 @@ addons = {
   ingress_nginx         = false
   ebs_csi               = true
   cert_manager          = true
-  kube_prometheus_stack = false
+  kube_prometheus_stack = true
   argocd                = false
   jaeger                = false
   otel                  = false
