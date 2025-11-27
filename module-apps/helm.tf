@@ -237,8 +237,8 @@ resource "helm_release" "argocd" {
           annotations = {
             "nginx.ingress.kubernetes.io/force-ssl-redirect" = "false"
             "nginx.ingress.kubernetes.io/backend-protocol"   = "HTTP"
-            "external-dns.alpha.kubernetes.io/hostname" = "argocd-${var.environment}.${data.aws_caller_identity.current.account_id}.montlabz.com"
-            "cert-manager.io/cluster-issuer"            = "letsencrypt-staging"
+            "external-dns.alpha.kubernetes.io/hostname"      = "argocd-${var.environment}.${data.aws_caller_identity.current.account_id}.montlabz.com"
+            "cert-manager.io/cluster-issuer"                 = "letsencrypt-staging"
           }
           tls = [{
             hosts      = ["argocd-${var.environment}.${data.aws_caller_identity.current.account_id}.montlabz.com"]
@@ -296,8 +296,8 @@ resource "helm_release" "jaeger" {
           annotations = {
             "nginx.ingress.kubernetes.io/force-ssl-redirect" = "false"
             "nginx.ingress.kubernetes.io/backend-protocol"   = "HTTP"
-            "external-dns.alpha.kubernetes.io/hostname" = "jaeger-${var.environment}.${data.aws_caller_identity.current.account_id}.montlabz.com"
-            "cert-manager.io/cluster-issuer"            = "letsencrypt-staging"
+            "external-dns.alpha.kubernetes.io/hostname"      = "jaeger-${var.environment}.${data.aws_caller_identity.current.account_id}.montlabz.com"
+            "cert-manager.io/cluster-issuer"                 = "letsencrypt-staging"
           }
           hosts = ["jaeger-${var.environment}.${data.aws_caller_identity.current.account_id}.montlabz.com"]
           tls = [{

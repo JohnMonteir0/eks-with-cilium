@@ -3,6 +3,8 @@ environment  = "stg"
 cluster_name = "platform-stg"
 aws_region   = "us-east-1"
 
+create_kms_key = "false"
+
 vpc_cidr = "10.20.0.0/16"
 pod_cidr = "100.65.0.0/17"
 
