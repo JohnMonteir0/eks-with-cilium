@@ -80,6 +80,16 @@ resource "helm_release" "external_dns" {
     value = ""
   }
 
+  set {
+    name  = "cloudflare.apiKey"
+    value = ""
+  }
+
+  set {
+    name  = "cloudflare.apiToken"
+    value = ""
+  }
+
   # -----------------------------
   # Cloudflare DNS settings
   # -----------------------------
