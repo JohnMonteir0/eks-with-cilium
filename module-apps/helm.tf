@@ -64,19 +64,18 @@ resource "helm_release" "external_dns" {
     value = "cloudflare"
   }
 
-  # CLOUDLFARE TOKEN VIA ENV (THIS IS THE FIX)
   set {
-    name  = "extraEnv[0].name"
+    name  = "env[0].name"
     value = "CF_API_TOKEN"
   }
 
   set {
-    name  = "extraEnv[0].valueFrom.secretKeyRef.name"
+    name  = "env[0].valueFrom.secretKeyRef.name"
     value = "cloudflare-api-key"
   }
 
   set {
-    name  = "extraEnv[0].valueFrom.secretKeyRef.key"
+    name  = "env[0].valueFrom.secretKeyRef.key"
     value = "apiKey"
   }
 
