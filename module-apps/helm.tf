@@ -76,7 +76,7 @@ resource "helm_release" "external_dns" {
 
   set {
     name  = "env[0].valueFrom.secretKeyRef.key"
-    value = "api-token"
+    value = "apiKey"
   }
 
 
