@@ -56,27 +56,47 @@ resource "helm_release" "external_dns" {
   chart      = "external-dns"
   version    = "1.15.0"
   namespace  = "kube-system"
+  atomic     = true
 
+  # -----------------------------
+  # Provider: Cloudflare (API Token mode)
+  # -----------------------------
   set {
     name  = "provider"
     value = "cloudflare"
   }
-
   set {
     name  = "cloudflare.apiTokenSecretRef.name"
     value = "external-dns-cloudflare"
   }
-
   set {
     name  = "cloudflare.apiTokenSecretRef.key"
     value = "cloudflare_api_token"
   }
 
+  # Required to disable Global API Key + Email mode
+  set {
+    name  = "cloudflare.email"
+    value = ""
+  }
+
+  # -----------------------------
+  # Cloudflare DNS settings
+  # -----------------------------
+  # MUST be false for AWS NLB
   set {
     name  = "cloudflare.proxied"
     value = "false"
   }
-
+  set {
+    name  = "registry"
+    value = "txt"
+  }
+  # Sync mode = bidirectional
+  set {
+    name  = "policy"
+    value = "sync"
+  }
   set {
     name  = "sources"
     value = "{ingress}"
@@ -86,6 +106,7 @@ resource "helm_release" "external_dns" {
     kubernetes_secret.external_dns_cloudflare
   ]
 }
+
 
 #############################################
 # Ingress NGINX
