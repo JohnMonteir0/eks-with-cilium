@@ -69,9 +69,15 @@ resource "helm_release" "external_dns" {
     name  = "extraEnv[0].name"
     value = "CF_API_TOKEN"
   }
+
   set {
     name  = "extraEnv[0].valueFrom.secretKeyRef.name"
     value = "cloudflare-api-key"
+  }
+
+  set {
+    name  = "extraEnv[0].valueFrom.secretKeyRef.key"
+    value = "cloudflare_api_token"
   }
 
   # DNS behavior
