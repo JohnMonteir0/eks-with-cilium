@@ -102,6 +102,15 @@ resource "helm_release" "external_dns" {
     value = "{ingress}"
   }
 
+  set {
+    name  = "serviceAccount.create"
+    value = "true"
+  }
+  set {
+    name  = "serviceAccount.name"
+    value = "external-dns"
+  }
+
   depends_on = [
     kubernetes_secret.external_dns_cloudflare
   ]

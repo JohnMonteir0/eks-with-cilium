@@ -33,10 +33,4 @@ resource "kubernetes_service_account" "eks_ebs_csi_controller" {
 #############################################
 # External DNS SA
 #############################################
-resource "kubernetes_service_account" "external_dns" {
-  metadata {
-    name      = "external-dns"
-    namespace = "kube-system"
-  }
-}
 
