@@ -1,5 +1,5 @@
 module "eks_bottlerocket" {
-  source = "git::https://github.com/JohnMonteir0/terraform-eks-module.git?ref=main"
+  source = "git::https://github.com/JohnMonteir0/terraform-eks-module.git?ref=fix/kms-logic"
 
   cluster_name    = local.name
   cluster_version = "1.33"
