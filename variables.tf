@@ -85,6 +85,14 @@ variable "create_kms_key" {
   default     = true
 }
 
+variable "cluster_encryption_config" {
+  description = "Configuration block with encryption configuration for the cluster. To disable secret encryption, set this value to `{}`"
+  type        = any
+  default = {
+    resources = ["secrets"]
+  }
+}
+
 # Karpenter nodeclass/nodepool inputs (per env via envvars/*)
 variable "karpenter_capacity_type" { type = string } # "on-demand" or "spot"
 

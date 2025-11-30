@@ -3,7 +3,10 @@ environment  = "stg"
 cluster_name = "platform-stg"
 aws_region   = "us-east-1"
 
-create_kms_key = "false"
+cluster_encryption_config = {
+  resources        = ["secrets"]
+  provider_key_arn = "arn:aws:kms:us-east-1:107363237542:key/811cfb58-f04d-4d5d-b481-233c8be15d9a"
+}
 
 vpc_cidr = "10.20.0.0/16"
 pod_cidr = "100.65.0.0/17"
