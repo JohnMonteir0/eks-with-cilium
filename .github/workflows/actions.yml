@@ -12,7 +12,7 @@ on:
         options:
           - development
           - staging
-          - production
+          - main
 
 permissions:
   id-token: write
