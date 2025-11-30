@@ -86,8 +86,11 @@ variable "create_kms_key" {
 }
 
 variable "cluster_encryption_config" {
-  description = "Configuration block with encryption configuration for the cluster. To disable secret encryption, set this value to `{}`"
-  type        = any
+  description = "EKS encryption configuration. Use {} to disable encryption."
+  type = object({
+    resources        = optional(list(string))
+    provider_key_arn = optional(string)
+  })
   default = {}
 }
 
