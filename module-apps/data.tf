@@ -22,3 +22,8 @@ data "aws_subnets" "public" {
 data "aws_iam_openid_connect_provider" "cluster" {
   url = var.cluster_oidc_issuer_url
 }
+
+data "aws_ssm_parameter" "cloudflare_api_token" {
+  name = "/external-dns/cloudflare-api-token"
+}
+

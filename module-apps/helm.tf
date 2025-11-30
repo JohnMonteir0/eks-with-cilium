@@ -58,19 +58,33 @@ resource "helm_release" "external_dns" {
   namespace  = "kube-system"
 
   set {
-    name  = "serviceAccount.create"
+    name  = "provider"
+    value = "cloudflare"
+  }
+
+  set {
+    name  = "cloudflare.apiTokenSecretRef.name"
+    value = "external-dns-cloudflare"
+  }
+
+  set {
+    name  = "cloudflare.apiTokenSecretRef.key"
+    value = "cloudflare_api_token"
+  }
+
+  set {
+    name  = "cloudflare.proxied"
     value = "false"
   }
 
   set {
-    name  = "serviceAccount.name"
-    value = "external-dns"
+    name  = "sources"
+    value = "{ingress}"
   }
 
-  set {
-    name  = "policy"
-    value = "sync"
-  }
+  depends_on = [
+    kubernetes_secret.external_dns_cloudflare
+  ]
 }
 
 #############################################
