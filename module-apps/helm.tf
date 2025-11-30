@@ -103,7 +103,7 @@ resource "helm_release" "external_dns" {
   }
 
   depends_on = [
-    kubernetes_secret.external_dns_cloudflare
+    kubernetes_secret.cloudflare_api_key
   ]
 }
 
