@@ -65,6 +65,23 @@ resource "helm_release" "external_dns" {
   }
 
   set {
+    name  = "cloudflare.apiToken"
+    value = ""
+  }
+  set {
+    name  = "cloudflare.apiKey"
+    value = ""
+  }
+  set {
+    name  = "cloudflare.email"
+    value = ""
+  }
+  set {
+    name  = "cloudflare.apiTokenSecretRef.enabled"
+    value = "false"
+  }
+
+  set {
     name  = "env[0].name"
     value = "CF_API_TOKEN"
   }
