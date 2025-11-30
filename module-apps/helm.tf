@@ -58,42 +58,23 @@ resource "helm_release" "external_dns" {
   namespace  = "kube-system"
   atomic     = true
 
-  # -----------------------------
-  # Provider: Cloudflare (API Token mode)
-  # -----------------------------
+  # Provider
   set {
     name  = "provider"
     value = "cloudflare"
   }
+
+  # CLOUDLFARE TOKEN VIA ENV (THIS IS THE FIX)
   set {
-    name  = "cloudflare.apiTokenSecretRef.name"
-    value = "external-dns-cloudflare"
+    name  = "extraEnv[0].name"
+    value = "CF_API_TOKEN"
   }
   set {
-    name  = "cloudflare.apiTokenSecretRef.key"
-    value = "cloudflare_api_token"
+    name  = "extraEnv[0].valueFrom.secretKeyRef.name"
+    value = "cloudflare-api-key"
   }
 
-  # Required to disable Global API Key + Email mode
-  set {
-    name  = "cloudflare.email"
-    value = "johnmonteiro11@gmail.com"
-  }
-
-  set {
-  name  = "cloudflare.apiKey"
-  value = ""
-  }
-
-  set {
-  name  = "cloudflare.apiToken"
-  value = ""
-}
-
-  # -----------------------------
-  # Cloudflare DNS settings
-  # -----------------------------
-  # MUST be false for AWS NLB
+  # DNS behavior
   set {
     name  = "cloudflare.proxied"
     value = "false"
@@ -102,7 +83,6 @@ resource "helm_release" "external_dns" {
     name  = "registry"
     value = "txt"
   }
-  # Sync mode = bidirectional
   set {
     name  = "policy"
     value = "sync"
@@ -112,6 +92,7 @@ resource "helm_release" "external_dns" {
     value = "{ingress}"
   }
 
+  # Service account
   set {
     name  = "serviceAccount.create"
     value = "true"

@@ -1,6 +1,6 @@
-resource "kubernetes_secret" "external_dns_cloudflare" {
+resource "kubernetes_secret" "cloudflare_api_key" {
   metadata {
-    name      = "external-dns-cloudflare"
+    name      = "cloudflare-api-key"
     namespace = "kube-system"
   }
 
