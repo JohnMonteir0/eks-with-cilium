@@ -14,7 +14,7 @@ module "aws_auth" {
 
   aws_auth_users = [
     {
-      userarn  = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/cloud_user"
+      userarn  = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/cloud-admin"
       username = "cloud_user"
       groups   = ["system:masters"]
     }

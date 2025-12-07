@@ -79,6 +79,21 @@ variable "one_nat_gateway_per_az" {
   default     = false
 }
 
+variable "create_kms_key" {
+  type        = bool
+  description = "Controls if a KMS key for cluster encryption should be created"
+  default     = true
+}
+
+variable "cluster_encryption_config" {
+  description = "EKS encryption configuration. Use {} to disable encryption."
+  type = object({
+    resources        = optional(list(string))
+    provider_key_arn = optional(string)
+  })
+  default = {}
+}
+
 # Karpenter nodeclass/nodepool inputs (per env via envvars/*)
 variable "karpenter_capacity_type" { type = string } # "on-demand" or "spot"
 

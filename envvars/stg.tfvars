@@ -3,6 +3,13 @@ environment  = "stg"
 cluster_name = "platform-stg"
 aws_region   = "us-east-1"
 
+create_kms_key = "false"
+cluster_encryption_config = {
+  resources        = ["secrets"]
+  provider_key_arn = "arn:aws:kms:us-east-1:107363237542:key/811cfb58-f04d-4d5d-b481-233c8be15d9a"
+}
+
+# VPC and Pods CIDRs
 vpc_cidr = "10.20.0.0/16"
 pod_cidr = "100.65.0.0/17"
 
@@ -25,7 +32,7 @@ one_nat_gateway_per_az = false
 
 # allow both t3.small and t3.medium, on-demand (or spot)
 karpenter_capacity_type  = "on-demand"
-karpenter_instance_types = ["t3.small", "t3.medium"]
+karpenter_instance_types = ["t3.medium"]
 karpenter_cpu_limit      = "48"
 karpenter_disk_gi        = 20
 
@@ -33,11 +40,11 @@ karpenter_disk_gi        = 20
 addons = {
   alb                   = true
   external_dns          = true
-  ingress_nginx         = true
+  ingress_nginx         = false
   ebs_csi               = true
   cert_manager          = true
-  kube_prometheus_stack = false
-  argocd                = false
+  kube_prometheus_stack = true
+  argocd                = true
   jaeger                = false
   otel                  = false
   loki                  = false

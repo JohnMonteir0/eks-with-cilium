@@ -56,22 +56,80 @@ resource "helm_release" "external_dns" {
   chart      = "external-dns"
   version    = "1.15.0"
   namespace  = "kube-system"
+  atomic     = true
+
+  # Provider
+  set {
+    name  = "provider"
+    value = "cloudflare"
+  }
 
   set {
-    name  = "serviceAccount.create"
+    name  = "cloudflare.apiToken"
+    value = ""
+  }
+  set {
+    name  = "cloudflare.apiKey"
+    value = ""
+  }
+  set {
+    name  = "cloudflare.email"
+    value = ""
+  }
+  set {
+    name  = "cloudflare.apiTokenSecretRef.enabled"
     value = "false"
   }
 
+  set {
+    name  = "env[0].name"
+    value = "CF_API_TOKEN"
+  }
+
+  set {
+    name  = "env[0].valueFrom.secretKeyRef.name"
+    value = "cloudflare-api-key"
+  }
+
+  set {
+    name  = "env[0].valueFrom.secretKeyRef.key"
+    value = "apiKey"
+  }
+
+
+  # DNS behavior
+  set {
+    name  = "cloudflare.proxied"
+    value = "false"
+  }
+  set {
+    name  = "registry"
+    value = "txt"
+  }
+  set {
+    name  = "policy"
+    value = "sync"
+  }
+  set {
+    name  = "sources"
+    value = "{ingress}"
+  }
+
+  # Service account
+  set {
+    name  = "serviceAccount.create"
+    value = "true"
+  }
   set {
     name  = "serviceAccount.name"
     value = "external-dns"
   }
 
-  set {
-    name  = "policy"
-    value = "sync"
-  }
+  depends_on = [
+    kubernetes_secret.cloudflare_api_key
+  ]
 }
+
 
 #############################################
 # Ingress NGINX
@@ -175,8 +233,7 @@ resource "helm_release" "cert_manager" {
   }
 
   depends_on = [
-    helm_release.aws_load_balancer_controller,
-    helm_release.ingress_nginx
+    helm_release.aws_load_balancer_controller
   ]
 }
 
@@ -227,21 +284,21 @@ resource "helm_release" "argocd" {
   values = [
     yamlencode({
       global = {
-        domain = "argocd-${var.environment}.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
+        domain = "argocd-${var.environment}.${data.aws_caller_identity.current.account_id}.montlabz.com"
       }
       configs = { params = { "server.insecure" = true } }
       server = {
         ingress = {
           enabled          = true
-          ingressClassName = "nginx"
+          ingressClassName = "cilium"
           annotations = {
-            "nginx.ingress.kubernetes.io/force-ssl-redirect" = "false"
-            "nginx.ingress.kubernetes.io/backend-protocol"   = "HTTP"
-            "external-dns.alpha.kubernetes.io/hostname"      = "argocd-${var.environment}.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
-            "cert-manager.io/cluster-issuer"                 = "letsencrypt-staging"
+            "ingress.cilium.io/force-https"             = "disabled"
+            "ingress.cilium.io/backend-service-port"    = "http"
+            "external-dns.alpha.kubernetes.io/hostname" = "argocd-${var.environment}.${data.aws_caller_identity.current.account_id}.montlabz.com"
+            "cert-manager.io/cluster-issuer"            = "letsencrypt-staging"
           }
           tls = [{
-            hosts      = ["argocd-${var.environment}.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"]
+            hosts      = ["argocd-${var.environment}.${data.aws_caller_identity.current.account_id}.montlabz.com"]
             secretName = "letsencrypt-staging"
           }]
         }
@@ -252,7 +309,6 @@ resource "helm_release" "argocd" {
   depends_on = [
 
     helm_release.aws_load_balancer_controller,
-    helm_release.ingress_nginx,
     helm_release.cert_manager
   ]
 }
@@ -292,16 +348,15 @@ resource "helm_release" "jaeger" {
         }
         ingress = {
           enabled          = true
-          ingressClassName = "nginx"
+          ingressClassName = "cilium"
           annotations = {
-            "nginx.ingress.kubernetes.io/force-ssl-redirect" = "false"
-            "nginx.ingress.kubernetes.io/backend-protocol"   = "HTTP"
-            "external-dns.alpha.kubernetes.io/hostname"      = "jaeger-${var.environment}.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"
-            "cert-manager.io/cluster-issuer"                 = "letsencrypt-staging"
+            "ingress.cilium.io/force-https"             = "disabled"
+            "external-dns.alpha.kubernetes.io/hostname" = "jaeger-${var.environment}.${data.aws_caller_identity.current.account_id}.montlabz.com"
+            "cert-manager.io/cluster-issuer"            = "letsencrypt-staging"
           }
-          hosts = ["jaeger-${var.environment}.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"]
+          hosts = ["jaeger-${var.environment}.${data.aws_caller_identity.current.account_id}.montlabz.com"]
           tls = [{
-            hosts      = ["jaeger-${var.environment}.${data.aws_caller_identity.current.account_id}.realhandsonlabs.net"]
+            hosts      = ["jaeger-${var.environment}.${data.aws_caller_identity.current.account_id}.montlabz.com"]
             secretName = "letsencrypt-staging"
           }]
         }
@@ -319,7 +374,6 @@ resource "helm_release" "jaeger" {
 
   depends_on = [
     helm_release.aws_load_balancer_controller,
-    helm_release.ingress_nginx,
     helm_release.cert_manager
   ]
 }
@@ -371,7 +425,6 @@ resource "helm_release" "otel_collector" {
 
   depends_on = [
     helm_release.jaeger,
-    helm_release.ingress_nginx,
     helm_release.cert_manager,
     helm_release.aws_load_balancer_controller,
     helm_release.kube_prometheus_stack

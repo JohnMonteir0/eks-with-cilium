@@ -3,7 +3,12 @@ environment  = "prod"
 cluster_name = "platform-prod"
 aws_region   = "us-east-1"
 
-# Give prod more room up front
+create_kms_key = "true"
+cluster_encryption_config = {
+  resources = ["secrets"]
+}
+
+# VPC and Pods CIDRs
 vpc_cidr = "10.30.0.0/16"
 pod_cidr = "100.66.0.0/16" # bigger pool if expect many pods
 
@@ -36,7 +41,7 @@ karpenter_disk_gi        = 30
 addons = {
   alb                   = true
   external_dns          = true
-  ingress_nginx         = true
+  ingress_nginx         = false
   ebs_csi               = true
   cert_manager          = true
   kube_prometheus_stack = true

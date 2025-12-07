@@ -63,37 +63,5 @@ resource "aws_iam_role_policy_attachment" "attach_ebs_csi_policy" {
 }
 
 # ExternalDNS
-resource "aws_iam_role" "eks_external_dns" {
-  for_each = var.addons.alb ? local.one : local.none
-  name     = "${local.iam_name_prefix}-external-dns"
-  path     = local.iam_path
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect    = "Allow",
-      Principal = { Federated = data.aws_iam_openid_connect_provider.cluster.arn },
-      Action    = "sts:AssumeRoleWithWebIdentity",
-      Condition = {
-        StringEquals = {
-          "${local.oidc_host}:aud" = "sts.amazonaws.com",
-          "${local.oidc_host}:sub" = "system:serviceaccount:kube-system:external-dns"
-        }
-      }
-    }]
-  })
-  tags = var.tags
-}
 
-resource "aws_iam_policy" "external_dns_policy" {
-  for_each = var.addons.alb ? local.one : local.none
-  name     = "${local.iam_name_prefix}-external-dns"
-  path     = local.iam_path
-  policy   = data.aws_iam_policy_document.external_dns_policy.json
-  tags     = var.tags
-}
 
-resource "aws_iam_role_policy_attachment" "attach_external_dns_policy" {
-  for_each   = var.addons.alb ? local.one : local.none
-  role       = aws_iam_role.eks_external_dns["this"].name
-  policy_arn = aws_iam_policy.external_dns_policy["this"].arn
-}
