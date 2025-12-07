@@ -56,51 +56,109 @@ resource "helm_release" "external_dns" {
   chart      = "external-dns"
   version    = "1.15.0"
   namespace  = "kube-system"
+  atomic     = true
+
+  # Provider
+  set {
+    name  = "provider"
+    value = "cloudflare"
+  }
 
   set {
-    name  = "serviceAccount.create"
+    name  = "cloudflare.apiToken"
+    value = ""
+  }
+  set {
+    name  = "cloudflare.apiKey"
+    value = ""
+  }
+  set {
+    name  = "cloudflare.email"
+    value = ""
+  }
+  set {
+    name  = "cloudflare.apiTokenSecretRef.enabled"
     value = "false"
   }
 
+  set {
+    name  = "env[0].name"
+    value = "CF_API_TOKEN"
+  }
+
+  set {
+    name  = "env[0].valueFrom.secretKeyRef.name"
+    value = "cloudflare-api-key"
+  }
+
+  set {
+    name  = "env[0].valueFrom.secretKeyRef.key"
+    value = "apiKey"
+  }
+
+
+  # DNS behavior
+  set {
+    name  = "cloudflare.proxied"
+    value = "false"
+  }
+  set {
+    name  = "registry"
+    value = "txt"
+  }
+  set {
+    name  = "policy"
+    value = "sync"
+  }
+  set {
+    name  = "sources"
+    value = "{ingress}"
+  }
+
+  # Service account
+  set {
+    name  = "serviceAccount.create"
+    value = "true"
+  }
   set {
     name  = "serviceAccount.name"
     value = "external-dns"
   }
 
-  set {
-    name  = "policy"
-    value = "sync"
-  }
+  depends_on = [
+    kubernetes_secret.cloudflare_api_key
+  ]
 }
+
 
 #############################################
 # Ingress NGINX
 #############################################
-# resource "helm_release" "ingress_nginx" {
-#   for_each         = var.addons.ingress_nginx ? local.one : local.none
-#   name             = "ingress-nginx"
-#   repository       = "https://kubernetes.github.io/ingress-nginx"
-#   chart            = "ingress-nginx"
-#   version          = "4.13.2"
-#   namespace        = "ingress-nginx"
-#   create_namespace = true
-#   replace          = true
-#   atomic           = true
+resource "helm_release" "ingress_nginx" {
+  for_each         = var.addons.ingress_nginx ? local.one : local.none
+  name             = "ingress-nginx"
+  repository       = "https://kubernetes.github.io/ingress-nginx"
+  chart            = "ingress-nginx"
+  version          = "4.13.2"
+  namespace        = "ingress-nginx"
+  create_namespace = true
+  replace          = true
+  atomic           = true
 
-#   values = [
-#     yamlencode({
-#       controller = {
-#         service = {
-#           annotations = local.annotations
-#         }
-#       }
-#     })
-#   ]
+  values = [
+    yamlencode({
+      controller = {
+        service = {
+          annotations = local.annotations
+        }
+      }
+    })
+  ]
 
-#   depends_on = [
-#     helm_release.aws_load_balancer_controller
-#   ]
-# }
+  depends_on = [
+    helm_release.aws_load_balancer_controller
+  ]
+}
 
 #############################################
 # EBS CSI Driver
@@ -234,8 +292,8 @@ resource "helm_release" "argocd" {
           enabled          = true
           ingressClassName = "cilium"
           annotations = {
-            "ingress.cilium.io/tls-passthrough"         = "enabled"
             "ingress.cilium.io/force-https"             = "disabled"
+            "ingress.cilium.io/backend-service-port"    = "http"
             "external-dns.alpha.kubernetes.io/hostname" = "argocd-${var.environment}.${data.aws_caller_identity.current.account_id}.montlabz.com"
             "cert-manager.io/cluster-issuer"            = "letsencrypt-staging"
           }
@@ -292,7 +350,6 @@ resource "helm_release" "jaeger" {
           enabled          = true
           ingressClassName = "cilium"
           annotations = {
-            "ingress.cilium.io/tls-passthrough"         = "enabled"
             "ingress.cilium.io/force-https"             = "disabled"
             "external-dns.alpha.kubernetes.io/hostname" = "jaeger-${var.environment}.${data.aws_caller_identity.current.account_id}.montlabz.com"
             "cert-manager.io/cluster-issuer"            = "letsencrypt-staging"

@@ -1,14 +1,14 @@
 ### Cilium ###
 resource "helm_release" "cilium" {
-  name         = "cilium"
-  description  = "A Helm chart to deploy cilium"
-  namespace    = "kube-system"
-  chart        = "cilium"
-  version      = "1.18.1"
-  repository   = "https://helm.cilium.io"
-  wait         = true
-  replace      = true
-  timeout      = 900
+  name        = "cilium"
+  description = "A Helm chart to deploy cilium"
+  namespace   = "kube-system"
+  chart       = "cilium"
+  version     = "1.18.1"
+  repository  = "https://helm.cilium.io"
+  wait        = true
+  replace     = true
+  timeout     = 900
 
   # --- API server host/port for kube-proxy replacement ---
   set {
@@ -139,6 +139,12 @@ resource "helm_release" "cilium" {
     name  = "hubble.ui.ingress.paths[0].pathType"
     value = "Prefix"
   }
+
+  set {
+    name  = "hubble.ui.ingress.backendServicePort"
+    value = "http"
+  }
+
 
   # =============================
   # Hubble (metrics)

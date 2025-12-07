@@ -127,24 +127,24 @@ data "aws_iam_policy_document" "lb_controller_policy" {
   }
 }
 
-data "aws_iam_policy_document" "external_dns_policy" {
-  statement {
-    effect = "Allow"
-    actions = [
-      "route53:ChangeResourceRecordSets"
-    ]
-    resources = [
-      "arn:aws:route53:::hostedzone/*"
-    ]
-  }
+# data "aws_iam_policy_document" "external_dns_policy" {
+#   statement {
+#     effect = "Allow"
+#     actions = [
+#       "route53:ChangeResourceRecordSets"
+#     ]
+#     resources = [
+#       "arn:aws:route53:::hostedzone/*"
+#     ]
+#   }
 
-  statement {
-    effect = "Allow"
-    actions = [
-      "route53:ListHostedZones",
-      "route53:ListResourceRecordSets",
-      "route53:ListTagsForResource"
-    ]
-    resources = ["*"]
-  }
-}
+#   statement {
+#     effect = "Allow"
+#     actions = [
+#       "route53:ListHostedZones",
+#       "route53:ListResourceRecordSets",
+#       "route53:ListTagsForResource"
+#     ]
+#     resources = ["*"]
+#   }
+# }

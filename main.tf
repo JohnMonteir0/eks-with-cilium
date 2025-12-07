@@ -8,6 +8,7 @@ module "eks_bottlerocket" {
   cluster_endpoint_public_access           = true
   enable_cluster_creator_admin_permissions = true
   bootstrap_self_managed_addons            = false
+  create_kms_key                           = var.create_kms_key
 
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
@@ -85,6 +86,6 @@ module "eks_bottlerocket" {
 
   tags = local.tags
 
-  depends_on = [ module.vpc ]
+  depends_on = [module.vpc]
 
 }
