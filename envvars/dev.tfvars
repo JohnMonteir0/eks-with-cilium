@@ -3,6 +3,12 @@ environment  = "dev"
 cluster_name = "platform-dev"
 aws_region   = "us-east-1"
 
+create_kms_key = "false"
+cluster_encryption_config = {
+  resources        = ["secrets"]
+  provider_key_arn = "arn:aws:kms:us-east-1:107363237542:key/c64312fd-dc5c-4737-852c-c58fc54e00e8"
+}
+
 # VPC and Pods CIDRs
 vpc_cidr = "10.10.0.0/16"
 pod_cidr = "100.64.0.0/17" # non-overlapping with vpc_cidr
