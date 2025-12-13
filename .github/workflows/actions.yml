@@ -13,6 +13,13 @@ on:
           - development
           - staging
           - main
+      action:
+        description: "Terraform action"
+        required: true
+        type: choice
+        options:
+          - apply
+          - destroy
 
 permissions:
   id-token: write
@@ -23,11 +30,15 @@ concurrency:
   group: "tf-${{ github.workflow }}-${{ github.ref_name }}"
   cancel-in-progress: false
 
+env:
+  TF_ENV: ${{ github.ref_name == 'development' && 'dev' || github.ref_name == 'staging' && 'stg' || 'prod' }}
+
 jobs:
   plan:
     name: "Plan"
     runs-on: ubuntu-latest
     steps:
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -44,19 +55,30 @@ jobs:
           terraform_version: "1.9.6"
 
       - name: Init backend
-        run: terraform init -reconfigure -upgrade -backend-config="backend/${{ github.ref_name == 'development' && 'dev' || github.ref_name == 'staging' && 'stg' || 'prod' }}.tfbackend"
+        run: |
+          terraform init -reconfigure -upgrade \
+            -backend-config="backend/${{ env.TF_ENV }}.tfbackend"
 
-      - name: Fmt
+      - name: Format
         run: terraform fmt -recursive
 
       - name: Validate
         run: terraform validate
 
-      - name: Plan (binary + readable)
+      - name: Plan (apply or destroy)
         run: |
-          terraform plan -no-color -input=false -lock-timeout=2m \
-            -var-file="envvars/${{ github.ref_name == 'development' && 'dev' || github.ref_name == 'staging' && 'stg' || 'prod' }}.tfvars" \
-            -out=tfplan
+          if [ "${{ github.event.inputs.action }}" = "destroy" ]; then
+            echo "🚨 Running DESTROY plan"
+            terraform plan -destroy -no-color -input=false -lock-timeout=2m \
+              -var-file="envvars/${{ env.TF_ENV }}.tfvars" \
+              -out=tfplan
+          else
+            echo "🚀 Running APPLY plan"
+            terraform plan -no-color -input=false -lock-timeout=2m \
+              -var-file="envvars/${{ env.TF_ENV }}.tfvars" \
+              -out=tfplan
+          fi
+
           terraform show -no-color tfplan > tf-plan.out
           tail -n 500 tf-plan.out > tf-plan.tail.txt
 
@@ -68,15 +90,15 @@ jobs:
             tfplan
             tf-plan.out
             tf-plan.tail.txt
-            backend/${{ github.ref_name == 'development' && 'dev' || github.ref_name == 'staging' && 'stg' || 'prod' }}.tfbackend
+            backend/${{ env.TF_ENV }}.tfbackend
 
   approve:
-    name: "Manual Approval "
+    name: "Manual Approval"
     needs: plan
     runs-on: ubuntu-latest
-    # For all branches
     if: ${{ github.ref_name == 'development' || github.ref_name == 'staging' || github.ref_name == 'main' }}
     steps:
+
       - name: Download plan tail
         uses: actions/download-artifact@v4
         with:
@@ -98,11 +120,12 @@ jobs:
           secret: ${{ secrets.GITHUB_TOKEN }}
           approvers: ${{ vars.APPROVERS || 'JohnMonteir0' }}
           minimum-approvals: ${{ vars.MIN_APPROVALS || 1 }}
-          issue-title: "Approve apply: ${{ github.ref_name }} (run ${{ github.run_id }})"
+          issue-title: "Approve ${{ github.event.inputs.action }}: ${{ github.ref_name }} (run ${{ github.run_id }})"
           issue-body: |
-            Plan for **${{ github.ref_name }}** is ready.
-            **Branch/Commit:** ${{ github.ref }} / ${{ github.sha }}
-            **Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Action: **${{ github.event.inputs.action }}**
+            Environment: **${{ github.ref_name }}**
+            Branch/Commit: ${{ github.ref }} / ${{ github.sha }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
             **Plan (last ~500 lines):**
             ${{ env.PLAN_BODY }}
@@ -111,9 +134,9 @@ jobs:
     name: "Apply"
     needs: [plan, approve]
     runs-on: ubuntu-latest
-    # Apply only after approval on all branches
     if: ${{ needs.approve.result == 'success' }}
     steps:
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -130,12 +153,14 @@ jobs:
           terraform_version: "1.9.6"
 
       - name: Init backend
-        run: terraform init -reconfigure -upgrade -backend-config="backend/${{ github.ref_name == 'development' && 'dev' || github.ref_name == 'staging' && 'stg' || 'prod' }}.tfbackend"
+        run: |
+          terraform init -reconfigure -upgrade \
+            -backend-config="backend/${{ env.TF_ENV }}.tfbackend"
 
       - name: Download saved plan
         uses: actions/download-artifact@v4
         with:
           name: "tfplan-${{ github.ref_name }}-${{ github.run_id }}"
 
-      - name: Apply saved plan
+      - name: Apply plan (apply or destroy)
         run: terraform apply -no-color -input=false -lock-timeout=20m tfplan
