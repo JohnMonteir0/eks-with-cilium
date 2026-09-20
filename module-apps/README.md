@@ -1,3 +1,138 @@
+# Application add-ons
+
+The root `module "helm"` passes `var.addons` to this module. Each add-on uses
+an optional boolean flag and the shared `local.one` / `local.none` pattern.
+
+## Crossplane
+
+Crossplane is installed from the [official stable Helm repository](https://docs.crossplane.io/v2.4/get-started/install/),
+with chart version `2.4.0` pinned in `helm.tf`. The release creates the
+`crossplane-system` namespace, waits for readiness, and uses an atomic install
+with a 900-second timeout.
+
+`addons.crossplane` defaults to `false`. It is enabled in `envvars/dev.tfvars`
+and `envvars/prod.tfvars`, and disabled in staging. To enable it elsewhere, add
+`crossplane = true` to that environment's existing `addons` object.
+
+From the repository root, with AWS credentials for the intended environment:
+
+```sh
+terraform init -backend-config=backend/dev.tfbackend
+terraform plan -var-file=envvars/dev.tfvars -out=dev.tfplan
+# Review the full plan before applying it.
+terraform apply dev.tfplan
+kubectl get pods -n crossplane-system
+```
+
+Use the matching backend, variable file, and Kubernetes context for each environment.
+This installs the Crossplane core controllers and CRDs and provisions the AWS
+provider IAM roles described below. Provider packages, runtime configurations,
+ProviderConfigs, and database resources are not installed by this module yet.
+
+### Installation dependencies
+
+The root `module "helm"` already depends on `module.network` and the Karpenter
+NodePool/NodeClass manifests. Crossplane therefore installs after EKS, Cilium,
+CoreDNS, and Karpenter setup. Its namespace, service account, RBAC, and CRDs are
+managed by its Helm chart. With the current chart defaults, it does not require
+ALB, ingress, external DNS, cert-manager, EBS CSI, or the monitoring stack.
+
+The AWS provider IAM roles depend on the cluster OIDC provider; their policy
+attachments reference the roles and policies directly. Crossplane core does not
+use these roles, so IAM creation can run alongside its Helm installation. Future
+AWS Provider/runtime manifests must wait for Crossplane CRDs and IAM attachments;
+ProviderConfigs and managed resources must also wait for the provider CRDs.
+
+### AWS permissions for RDS and Aurora
+
+`crossplane-iam.tf` creates two IRSA roles when `addons.crossplane = true`:
+
+| Provider | IAM role (dev) | Trusted service account in `crossplane-system` |
+|----------|----------------|------------------------------------------------|
+| RDS | `platform-dev-crossplane-rds` | `crossplane-provider-aws-rds` |
+| EC2 (database security groups) | `platform-dev-crossplane-ec2` | `crossplane-provider-aws-ec2` |
+
+Each role trusts only its exact service account through this EKS cluster's OIDC
+provider, with the `sts.amazonaws.com` audience. The Crossplane core service
+account does not receive these permissions. No static AWS credentials are needed.
+
+The RDS role allows create, read, update, delete, and tagging operations for DB
+instances, Aurora clusters and their instances, DB subnet groups, parameter and
+option groups, and snapshots. AWS resource identifiers must begin with
+`<name_prefix>-crossplane-`, for example `platform-dev-crossplane-orders`.
+This includes subnet group names, custom parameter/option group names, and final
+snapshot identifiers. Default AWS parameter/option groups can be referenced.
+Discovery is allowed across the configured region; writes are scoped to the
+current account, region, and naming prefix. The role can create only the standard
+RDS service-linked role if it does not exist yet.
+
+The EC2 role can discover existing networks and manage database security groups.
+New groups must use the supplied `vpc_id` and include this tag at creation:
+
+```yaml
+spec:
+  forProvider:
+    tags:
+      crossplane-owner: platform-dev
+```
+
+Use the environment's `name_prefix` as the tag value. Rule changes and deletion
+require both this ownership tag and the cluster VPC. Tag updates cannot change
+or remove the ownership tag. Use security-group inline rules or the classic
+SecurityGroupRule resource; tagging standalone security-group-rule resources
+is not included in this policy.
+
+Neither role can create/delete VPCs or subnets. A DB subnet group references
+existing subnet IDs; it does not create subnets. The RDS policy limits subnet
+group names, but does not enforce their member subnet IDs or database public
+access settings. Supply the approved private subnet IDs in future compositions.
+
+This is a baseline database-management policy. Customer-managed KMS keys,
+Secrets Manager-managed master passwords, enhanced-monitoring role passing,
+snapshot restores, read-replica creation, global databases, and RDS Proxy require
+additional permissions for the selected resources/features. Database login
+permissions are separate from these infrastructure-management permissions.
+
+After applying Terraform, retrieve the exact role ARNs (including their IAM path):
+
+```sh
+terraform output -json crossplane_aws_permissions
+```
+
+When installing each AWS provider later, connect it with a
+`DeploymentRuntimeConfig`. For example, substitute the RDS role ARN from the
+output into this manifest:
+
+```yaml
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: crossplane-aws-rds
+spec:
+  serviceAccountTemplate:
+    metadata:
+      name: crossplane-provider-aws-rds
+      annotations:
+        eks.amazonaws.com/role-arn: <rds-role-arn-from-terraform-output>
+```
+
+Set the RDS Provider's `spec.runtimeConfigRef.name` to `crossplane-aws-rds`.
+For EC2, use its own runtime config, service-account name, and role ARN from the
+output. Configure the AWS ProviderConfig's `spec.credentials.source` as `IRSA`;
+its API version/kind depends on the provider version and resource scope chosen
+when installing the packages. IAM roles alone do not install or authenticate
+provider pods until this wiring is applied.
+
+References: [provider IRSA configuration](https://github.com/crossplane-contrib/provider-upjet-aws/blob/main/AUTHENTICATION.md),
+[RDS authorization](https://docs.aws.amazon.com/service-authorization/latest/reference/list_rds.html),
+[security-group policy examples](https://docs.aws.amazon.com/vpc/latest/userguide/vpc-policy-examples.html).
+
+Offline permission checks live in `tests/crossplane-iam.tftest.hcl`. With the
+module initialized using the repository's provider versions, run
+`terraform -chdir=module-apps test`. These mocked plan checks verify policy
+boundaries and the disabled flag; they do not replace live AWS authorization
+or provider reconciliation testing.
+
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
 
@@ -29,6 +164,7 @@ No modules.
 | [aws_iam_role_policy_attachment.attach_load_balancer_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
 | [helm_release.argocd](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
 | [helm_release.aws_load_balancer_controller](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
+| [helm_release.crossplane](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
 | [helm_release.ebs_csi_driver](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
 | [helm_release.external_dns](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |
 | [helm_release.ingress-nginx](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release) | resource |

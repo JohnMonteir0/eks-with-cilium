@@ -542,3 +542,21 @@ resource "helm_release" "tempo" {
     helm_release.kube_prometheus_stack
   ]
 }
+
+#############################################
+# Crossplane
+#############################################
+resource "helm_release" "crossplane" {
+  # Root module dependencies already wait for Cilium, CoreDNS, and Karpenter.
+  # Crossplane core does not use the AWS provider IAM roles.
+  for_each         = var.addons.crossplane ? local.one : local.none
+  name             = "crossplane"
+  repository       = "https://charts.crossplane.io/stable"
+  chart            = "crossplane"
+  version          = "2.4.0"
+  namespace        = "crossplane-system"
+  create_namespace = true
+  atomic           = true
+  wait             = true
+  timeout          = 900
+}

@@ -43,6 +43,7 @@ addons = {
   ingress_nginx         = false
   ebs_csi               = true
   cert_manager          = true
+  crossplane            = false
   kube_prometheus_stack = true
   argocd                = true
   jaeger                = false

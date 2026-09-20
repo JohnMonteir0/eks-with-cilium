@@ -44,6 +44,7 @@ variable "addons" {
     ingress_nginx         = optional(bool, false)
     ebs_csi               = optional(bool, false)
     cert_manager          = optional(bool, false)
+    crossplane            = optional(bool, false)
     kube_prometheus_stack = optional(bool, false)
     argocd                = optional(bool, false)
     jaeger                = optional(bool, false)
