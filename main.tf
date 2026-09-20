@@ -2,7 +2,7 @@ module "eks_bottlerocket" {
   source = "git::https://github.com/JohnMonteir0/terraform-eks-module.git?ref=main"
 
   cluster_name    = local.name
-  cluster_version = "1.35"
+  cluster_version = "1.33"
 
   create_cloudwatch_log_group              = false
   cluster_endpoint_public_access           = true
