@@ -21,10 +21,10 @@ tags = {
 }
 
 bootstrap_node = {
-  instance_type = "t3.medium"
-  min           = 3
-  max           = 8
-  desired       = 5
+  instance_type = "t3.large"
+  min           = 5
+  max           = 15
+  desired       = 10
 }
 
 enable_nat_gateway     = true

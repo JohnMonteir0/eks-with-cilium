@@ -28,6 +28,7 @@ resource "aws_iam_role" "gh_actions_role" {
             "repo:JohnMonteir0/eks-with-cilium:ref:refs/heads/main",
             "repo:JohnMonteir0/eks-with-cilium:ref:refs/heads/staging",
             "repo:JohnMonteir0/eks-with-cilium:ref:refs/heads/development",
+            "repo:JohnMonteir0@88355956/idp-with-backstage@1377758631:ref:refs/heads/main"
           ]
         }
       }
