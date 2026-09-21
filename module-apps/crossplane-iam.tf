@@ -104,6 +104,14 @@ locals {
           }
         },
         {
+          # RDS requires these dependent actions when it creates a managed
+          # master-user password in Secrets Manager.
+          Sid      = "CreateRdsMasterUserSecrets"
+          Effect   = "Allow"
+          Action   = ["secretsmanager:CreateSecret", "secretsmanager:TagResource"]
+          Resource = "${local.crossplane_arn_prefix}:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:rds!*"
+        },
+        {
           Sid      = "BootstrapRDSServiceLinkedRole"
           Effect   = "Allow"
           Action   = "iam:CreateServiceLinkedRole"

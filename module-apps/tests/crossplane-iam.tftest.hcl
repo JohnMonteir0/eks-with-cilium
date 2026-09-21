@@ -143,6 +143,19 @@ run "enabled_permissions_are_scoped" {
 
   assert {
     condition = one([
+      for statement in jsondecode(aws_iam_policy.crossplane_provider["rds"].policy).Statement :
+      statement if statement.Sid == "CreateRdsMasterUserSecrets"
+      ]) == {
+      Sid      = "CreateRdsMasterUserSecrets"
+      Effect   = "Allow"
+      Action   = ["secretsmanager:CreateSecret", "secretsmanager:TagResource"]
+      Resource = "arn:aws:secretsmanager:us-east-1:123456789012:secret:rds!*"
+    }
+    error_message = "RDS-managed master-user secrets must be limited to RDS secret names in this account and region."
+  }
+
+  assert {
+    condition = one([
       for statement in jsondecode(aws_iam_policy.crossplane_provider["ec2"].policy).Statement :
       statement.Resource if statement.Sid == "CreateSecurityGroupsInClusterVPC"
     ]) == "arn:aws:ec2:us-east-1:123456789012:vpc/vpc-0123456789abcdef0"
