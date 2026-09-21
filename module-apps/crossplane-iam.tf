@@ -75,6 +75,21 @@ locals {
           ]
         },
         {
+          # RDS creates a KMS grant on behalf of the provider role when it
+          # provisions encrypted database storage with the account RDS key.
+          Sid      = "CreateRdsEncryptionGrants"
+          Effect   = "Allow"
+          Action   = ["kms:CreateGrant", "kms:DescribeKey"]
+          Resource = "${local.crossplane_arn_prefix}:kms:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:key/*"
+          Condition = {
+            Bool = { "kms:GrantIsForAWSResource" = "true" }
+            StringEquals = {
+              "kms:CallerAccount" = data.aws_caller_identity.current.account_id
+              "kms:ViaService"    = "rds.${data.aws_region.current.name}.amazonaws.com"
+            }
+          }
+        },
+        {
           Sid      = "BootstrapRDSServiceLinkedRole"
           Effect   = "Allow"
           Action   = "iam:CreateServiceLinkedRole"

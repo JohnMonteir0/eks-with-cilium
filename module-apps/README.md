@@ -93,6 +93,11 @@ snapshot restores, read-replica creation, global databases, and RDS Proxy requir
 additional permissions for the selected resources/features. Database login
 permissions are separate from these infrastructure-management permissions.
 
+For encrypted storage, the RDS role can create KMS grants only on behalf of RDS
+in the configured account and region. This supports the account's AWS-managed
+`alias/aws/rds` key and a customer-managed key whose key policy permits the
+same grant operation.
+
 After applying Terraform, retrieve the exact role ARNs (including their IAM path):
 
 ```sh
