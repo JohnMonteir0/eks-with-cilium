@@ -82,23 +82,6 @@ resource "kubectl_manifest" "crossplane_aws_provider" {
   depends_on = [kubectl_manifest.crossplane_provider_runtime_config]
 }
 
-# Provider packages install their CRDs asynchronously. Wait for the shared
-# ProviderConfig API before creating the configuration consumed by all
-# Backstage-generated database resources.
-resource "terraform_data" "wait_for_crossplane_provider_config_crd" {
-  input = {
-    providers = {
-      for kind, provider in kubectl_manifest.crossplane_aws_provider : kind => provider.id
-    }
-  }
-
-  provisioner "local-exec" {
-    command = "kubectl wait --for=condition=Established --timeout=600s crd/providerconfigs.aws.upbound.io"
-  }
-
-  depends_on = [kubectl_manifest.crossplane_aws_provider]
-}
-
 resource "kubectl_manifest" "crossplane_aws_provider_config" {
   yaml_body = yamlencode({
     apiVersion = "aws.upbound.io/v1beta1"
@@ -113,5 +96,5 @@ resource "kubectl_manifest" "crossplane_aws_provider_config" {
     }
   })
 
-  depends_on = [terraform_data.wait_for_crossplane_provider_config_crd]
+  depends_on = [kubectl_manifest.crossplane_aws_provider]
 }
