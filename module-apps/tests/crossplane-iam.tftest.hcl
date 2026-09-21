@@ -109,7 +109,7 @@ run "enabled_permissions_are_scoped" {
       ]) == {
       Sid      = "CreateRdsEncryptionGrants"
       Effect   = "Allow"
-      Action   = ["kms:CreateGrant", "kms:DescribeKey"]
+      Action   = "kms:CreateGrant"
       Resource = "arn:aws:kms:us-east-1:123456789012:key/*"
       Condition = {
         Bool = { "kms:GrantIsForAWSResource" = "true" }
@@ -120,6 +120,25 @@ run "enabled_permissions_are_scoped" {
       }
     }
     error_message = "RDS encryption grants must be limited to this account, region, and the RDS service."
+  }
+
+  assert {
+    condition = one([
+      for statement in jsondecode(aws_iam_policy.crossplane_provider["rds"].policy).Statement :
+      statement if statement.Sid == "DescribeRdsEncryptionKeys"
+      ]) == {
+      Sid      = "DescribeRdsEncryptionKeys"
+      Effect   = "Allow"
+      Action   = "kms:DescribeKey"
+      Resource = "arn:aws:kms:us-east-1:123456789012:key/*"
+      Condition = {
+        StringEquals = {
+          "kms:CallerAccount" = "123456789012"
+          "kms:ViaService"    = "rds.us-east-1.amazonaws.com"
+        }
+      }
+    }
+    error_message = "RDS key metadata access must be limited to this account, region, and the RDS service."
   }
 
   assert {
