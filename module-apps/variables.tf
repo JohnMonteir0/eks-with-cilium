@@ -51,6 +51,7 @@ variable "addons" {
     otel_collector        = optional(bool, false)
     loki                  = optional(bool, false)
     tempo                 = optional(bool, false)
+    sealed_secrets        = optional(bool, false)
   })
   default = {}
 }
