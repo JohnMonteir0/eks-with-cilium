@@ -95,7 +95,15 @@ variable "cluster_encryption_config" {
 }
 
 # Karpenter nodeclass/nodepool inputs (per env via envvars/*)
-variable "karpenter_capacity_type" { type = string } # "on-demand" or "spot"
+variable "karpenter_capacity_type" {
+  description = "Karpenter NodePool capacity type. Must be either on-demand or spot."
+  type        = string
+
+  validation {
+    condition     = contains(["on-demand", "spot"], var.karpenter_capacity_type)
+    error_message = "karpenter_capacity_type must be either \"on-demand\" or \"spot\"."
+  }
+}
 
 variable "karpenter_instance_types" { type = list(string) } # e.g. ["t3.small","t3.medium"]
 
@@ -118,6 +126,7 @@ variable "addons" {
     otel_collector        = optional(bool, false)
     loki                  = optional(bool, false)
     tempo                 = optional(bool, false)
+    sealed_secrets        = optional(bool, false)
   })
   default = {}
 }

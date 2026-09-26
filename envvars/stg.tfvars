@@ -50,4 +50,5 @@ addons = {
   otel                  = false
   loki                  = false
   tempo                 = false
+  sealed_secrets        = true
 }

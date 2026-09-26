@@ -263,7 +263,31 @@ resource "helm_release" "kube_prometheus_stack" {
           podMonitorSelectorNilUsesHelmValues     = false
         }
       }
+      grafana = {
+        ingress = {
+          enabled          = true
+          ingressClassName = "cilium"
+          annotations = {
+            "ingress.cilium.io/force-https"             = "disabled"
+            "ingress.cilium.io/backend-service-port"    = "http-web"
+            "external-dns.alpha.kubernetes.io/hostname" = "grafana-${var.environment}.${data.aws_caller_identity.current.account_id}.montlabz.com"
+            "cert-manager.io/cluster-issuer"            = "letsencrypt-staging"
+          }
+          hosts    = ["grafana-${var.environment}.${data.aws_caller_identity.current.account_id}.montlabz.com"]
+          path     = "/"
+          pathType = "Prefix"
+          tls = [{
+            hosts      = ["grafana-${var.environment}.${data.aws_caller_identity.current.account_id}.montlabz.com"]
+            secretName = "grafana-letsencrypt-staging"
+          }]
+        }
+      }
     })
+  ]
+
+  depends_on = [
+    helm_release.aws_load_balancer_controller,
+    helm_release.cert_manager
   ]
 }
 
@@ -559,4 +583,37 @@ resource "helm_release" "crossplane" {
   atomic           = true
   wait             = true
   timeout          = 900
+}
+
+#############################################
+# Sealed Secrets
+#############################################
+resource "helm_release" "sealed_secrets" {
+  for_each         = var.addons.sealed_secrets ? local.one : local.none
+  name             = "sealed-secrets"
+  repository       = "https://bitnami.github.io/sealed-secrets"
+  chart            = "sealed-secrets"
+  version          = "2.20.0"
+  namespace        = "kube-system"
+  create_namespace = false
+  atomic           = true
+  wait             = true
+  timeout          = 900
+
+  set {
+    name  = "fullnameOverride"
+    value = "sealed-secrets-controller"
+  }
+
+  # The chart creates the Kubernetes ServiceAccount, Role/ClusterRole, and
+  # bindings needed by the controller. No AWS IAM permissions are required.
+  set {
+    name  = "serviceAccount.create"
+    value = "true"
+  }
+
+  set {
+    name  = "rbac.create"
+    value = "true"
+  }
 }

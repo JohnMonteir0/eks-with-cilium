@@ -22,19 +22,19 @@ tags = {
 
 bootstrap_node = {
   instance_type = "t3.large"
-  min           = 5
-  max           = 15
-  desired       = 10
+  min           = 3
+  max           = 8
+  desired       = 5
 }
 
 enable_nat_gateway     = true
 single_nat_gateway     = false
 one_nat_gateway_per_az = true
 
-# allow both t3.small and t3.medium, on-demand (or spot)
-karpenter_capacity_type  = "on-demand"
-karpenter_instance_types = ["t3.medium"]
-karpenter_cpu_limit      = "128"
+# allow both t3.medium and t3.large, on-demand (or spot)
+karpenter_capacity_type  = "spot"
+karpenter_instance_types = ["t3.medium", "t3.large"]
+karpenter_cpu_limit      = "256"
 karpenter_disk_gi        = 30
 
 # Addons to enable or disable
@@ -51,4 +51,5 @@ addons = {
   otel_collector        = true
   loki                  = true
   tempo                 = true
+  sealed_secrets        = true
 }
