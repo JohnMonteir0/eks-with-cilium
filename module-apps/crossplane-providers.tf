@@ -82,7 +82,26 @@ resource "kubectl_manifest" "crossplane_aws_provider" {
   depends_on = [kubectl_manifest.crossplane_provider_runtime_config]
 }
 
+# Creating a Provider object only submits the package installation to
+# Crossplane. The AWS provider-family installs the ProviderConfig CRD
+# asynchronously, so give it time to become discoverable before applying the
+# first ProviderConfig. Re-run the gate whenever a provider package changes.
+resource "time_sleep" "crossplane_aws_provider_crds" {
+  count = var.addons.crossplane ? 1 : 0
+
+  create_duration = "5m"
+  triggers = {
+    packages = sha256(jsonencode({
+      for key, provider in local.crossplane_aws_providers : key => provider.package
+    }))
+  }
+
+  depends_on = [kubectl_manifest.crossplane_aws_provider]
+}
+
 resource "kubectl_manifest" "crossplane_aws_provider_config" {
+  count = var.addons.crossplane ? 1 : 0
+
   yaml_body = yamlencode({
     apiVersion = "aws.upbound.io/v1beta1"
     kind       = "ProviderConfig"
@@ -96,5 +115,5 @@ resource "kubectl_manifest" "crossplane_aws_provider_config" {
     }
   })
 
-  depends_on = [kubectl_manifest.crossplane_aws_provider]
+  depends_on = [time_sleep.crossplane_aws_provider_crds]
 }
